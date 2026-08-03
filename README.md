@@ -9,6 +9,9 @@ A self-contained job application tracker, plus the CLI tooling that keeps it upd
 - **`tools/tracker_context.py`** — read-only script that parses the tracker and dumps the current pipeline (todo/applied/interview/offer/rejected) as JSON, for quick status checks without opening a browser.
 - **`docs/STRUCTURED_JOB_POSTING_TEMPLATE.txt`** — the input format `update_job_tracker` expects.
 - **`backups/`** — timestamped tracker snapshots written before each update (gitignored; local safety net, not synced).
+- **`tools/whatsapp_command.py`** + **`tools/send_whatsapp.py`** — parse a short WhatsApp message (`pipeline`, `update: <company> | <status>`) and send replies via the Meta Cloud API.
+- **`.github/workflows/whatsapp.yml`** — scheduled + on-demand GitHub Actions workflow that runs the above and commits tracker changes back.
+- **`cloudflare-worker/`** — always-on relay that receives your WhatsApp replies (GitHub Actions can't host a webhook) and forwards them to the workflow. See `docs/WHATSAPP_SETUP.md`.
 
 ## Data model
 
@@ -72,13 +75,10 @@ python3 tools/tracker_context.py francisco-job-tracker-2026.html
 
 Dumps counts and records per pipeline stage as JSON — useful for scripting or a quick CLI status check.
 
+## WhatsApp notifications and two-way commands
+
+Set up: [docs/WHATSAPP_SETUP.md](docs/WHATSAPP_SETUP.md). Once configured, a scheduled GitHub Actions workflow sends a daily pipeline digest to WhatsApp, and you can text back commands (`pipeline`, `update: <company> | <status>`) that update the tracker and commit the change — no PC required.
+
 ## Status
 
-This repo currently holds an independent copy of the tracker, kept in sync manually. The original working copy this was copied from lives locally outside this repo and is still the one being actively edited day-to-day, until the workflow below is validated end-to-end.
-
-## Planned next steps (not yet implemented)
-
-- A scheduled GitHub Actions workflow to run tracker updates in the cloud and commit changes back, so this repo becomes the single source of truth instead of a local file.
-- Phone notifications, likely via a Telegram bot — both for push alerts on status changes and two-way commands to check/update status from a phone.
-
-To wire that up we'll need: a Telegram bot token, the target chat ID, and confirmation of how updates should be triggered (on a schedule, via webhook, or both) — as GitHub Actions secrets, never committed to the repo.
+This repo currently holds an independent copy of the tracker, kept in sync manually. The original working copy this was copied from lives locally outside this repo and is still the one being actively edited day-to-day, until the workflow above is validated end-to-end and this repo takes over as the single source of truth.

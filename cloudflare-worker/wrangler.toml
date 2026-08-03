@@ -1,0 +1,8 @@
+name = "jobs3-whatsapp-relay"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Secrets are set with `wrangler secret put <NAME>` from this directory,
+# never written into this file or committed:
+#   VERIFY_TOKEN, ALLOWED_FROM, GITHUB_REPO, GITHUB_TOKEN
+# See ../docs/WHATSAPP_SETUP.md for the full walkthrough.

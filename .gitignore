@@ -10,6 +10,9 @@ env/
 
 .DS_Store
 
+node_modules/
+.wrangler/
+
 *.env
 *.env.*
 secrets.*

@@ -1,0 +1,74 @@
+name: WhatsApp tracker sync
+
+on:
+  schedule:
+    # ~08:00 Santiago time. Chile's UTC offset shifts with DST; adjust if needed.
+    - cron: "0 12 * * *"
+  repository_dispatch:
+    types: [whatsapp_command]
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "Command text, e.g. 'pipeline' or 'update: Roche | interview'"
+        required: false
+        default: pipeline
+
+permissions:
+  contents: write
+
+jobs:
+  handle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine command text
+        id: cmd
+        env:
+          DISPATCH_COMMAND: ${{ github.event.client_payload.command }}
+          INPUT_COMMAND: ${{ github.event.inputs.command }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            text="pipeline"
+          elif [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            text="$DISPATCH_COMMAND"
+          else
+            text="$INPUT_COMMAND"
+          fi
+          {
+            echo "text<<CMD_EOF"
+            echo "$text"
+            echo "CMD_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run command against the tracker
+        id: run
+        run: |
+          set +e
+          output=$(python3 tools/whatsapp_command.py \
+            --tracker francisco-job-tracker-2026.html \
+            raw "${{ steps.cmd.outputs.text }}" 2>&1)
+          status=$?
+          {
+            echo "reply<<REPLY_EOF"
+            echo "$output"
+            echo "REPLY_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Send WhatsApp reply
+        env:
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+          WHATSAPP_TO: ${{ secrets.WHATSAPP_TO }}
+        run: python3 tools/send_whatsapp.py "${{ steps.run.outputs.reply }}"
+
+      - name: Commit tracker changes
+        if: steps.run.outputs.status == '0'
+        run: |
+          git config user.name "jobs3-bot"
+          git config user.email "jobs3-bot@users.noreply.github.com"
+          git add francisco-job-tracker-2026.html
+          git diff --cached --quiet || git commit -m "Update via WhatsApp: ${{ steps.cmd.outputs.text }}"
+          git push
