@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON="/usr/bin/python3"
+TRACKER="${JOBS3_TRACKER:-$SCRIPT_DIR/../francisco-job-tracker-2026.html}"
+BACKUP_DIR="${JOBS3_TRACKER_BACKUP_DIR:-$SCRIPT_DIR/../backups}"
+APPLICATION_ROOT="${JOBS3_APPLICATION_ROOT:-/Users/franciscokirhman/Documents/Career/Job Applications}"
+
+exec "${PYTHON}" "${SCRIPT_DIR}/update_job_tracker.py" \
+  --tracker "${TRACKER}" \
+  --backup-dir "${BACKUP_DIR}" \
+  --store-posting \
+  --application-root "${APPLICATION_ROOT}" \
+  "$@"
