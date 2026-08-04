@@ -12,6 +12,8 @@ A self-contained job application tracker, plus the CLI tooling that keeps it upd
 - **`tools/whatsapp_command.py`** + **`tools/send_whatsapp.py`** — parse a short WhatsApp message (`pipeline`, `update: <company> | <status>`) and send replies via the Meta Cloud API.
 - **`.github/workflows/whatsapp.yml`** — scheduled + on-demand GitHub Actions workflow that runs the above and commits tracker changes back.
 - **`cloudflare-worker/`** — always-on relay that receives your WhatsApp replies (GitHub Actions can't host a webhook) and forwards them to the workflow. See `docs/WHATSAPP_SETUP.md`.
+- **`tools/discover_postings.py`** + **`tools/linkedin-search/`** — finds new job postings (LinkedIn + Workday, no LLM calls) and adds them to `MARKET_HISTORY`, alerting immediately over WhatsApp for high-fit matches. See `docs/JOB_DISCOVERY.md`.
+- **`tools/sync_market_history.py`** + **`tools/sync_local.sh`** — keeps `MARKET_HISTORY` in sync between this repo and the local working file, on a macOS LaunchAgent schedule. See `docs/LOCAL_SYNC_SETUP.md`.
 
 ## Data model
 

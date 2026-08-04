@@ -1,0 +1,43 @@
+name: Discover new postings
+
+on:
+  schedule:
+    # Every 4 hours. Deliberately not more frequent -- keep query volume low
+    # per the linkedin-search skill's own ToS caution (see tools/linkedin-search/SKILL.md).
+    - cron: "0 */4 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install linkedin-search CLI deps
+        run: cd tools/linkedin-search/cli && bun install --frozen-lockfile
+
+      - name: Run discovery
+        env:
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+          WHATSAPP_TO: ${{ secrets.WHATSAPP_TO }}
+        run: python3 tools/discover_postings.py
+
+      - name: Commit new postings
+        run: |
+          git config user.name "jobs3-bot"
+          git config user.email "jobs3-bot@users.noreply.github.com"
+          git add francisco-job-tracker-2026.html state/
+          if ! git diff --cached --quiet; then
+            git commit -m "Discover new postings (LinkedIn + Workday)"
+            git push
+          else
+            echo "No changes to commit."
+          fi
