@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 """Handle short WhatsApp commands against the canonical tracker.
 
-Two commands, both meant to be triggered by the WhatsApp -> Cloudflare
-Worker -> GitHub Actions relay described in docs/WHATSAPP_SETUP.md:
+Commands, meant to be triggered by the WhatsApp -> Cloudflare Worker ->
+GitHub Actions relay described in docs/WHATSAPP_SETUP.md:
 
   pipeline
-      Print a short status digest (counts per stage, upcoming deadlines).
+      Status digest: stage counts, today's action items, upcoming
+      deadlines, new postings from MARKET_HISTORY ranked by fit (verified
+      vs unverified shown separately), and a failed-sources summary.
+
+  sources
+      List every FAILED_SOURCES entry in full, with the manual-fix note.
+
+  sources: <name> | ok|updated
+      Remove a FAILED_SOURCES entry (fuzzy company/source match) and log
+      it to REVIEWED_SOURCES. 'ok' = no changes needed, 'updated' = fixed.
 
   update <company> <status> [--date YYYY-MM-DD]
       Find one existing record by company name (fuzzy match) and set its
@@ -18,12 +27,14 @@ Worker -> GitHub Actions relay described in docs/WHATSAPP_SETUP.md:
       Parse a single free-text WhatsApp message and dispatch to one of
       the above. Recognized forms (case-insensitive):
         pipeline
+        sources
+        sources: <name> | ok|updated
         update: <company> | <status> [| YYYY-MM-DD]
 
-Both commands print a short WhatsApp-ready reply to stdout and exit 0 on
-success. A disambiguation or not-found message is also printed to stdout
-(so it can still be sent back as a reply) but the process exits 1 so the
-caller knows not to commit a tracker change.
+Every command prints a short WhatsApp-ready reply to stdout and exits 0
+on success. A disambiguation or not-found message is also printed to
+stdout (so it can still be sent back as a reply) but the process exits 1
+so the caller knows not to commit a tracker change.
 """
 
 from __future__ import annotations
@@ -47,12 +58,16 @@ from update_job_tracker import (  # noqa: E402
     write_atomic,
 )
 from tracker_context import build_context  # noqa: E402
+from discover_postings import compute_fit  # noqa: E402
+from js_literal import read_flat_array, write_flat_array  # noqa: E402
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = REPO_ROOT / "state" / "market_history_seen.json"
 TRACKER_URL = "https://franciscokirhman.github.io/job-tracker/francisco-job-tracker-2026.html"
 MARKET_HISTORY_PATTERN = re.compile(r"const MARKET_HISTORY = (\[.*?\]);", re.S)
+VERIFIED_STATUSES = {"open"}
+MAX_LISTED = 8
 
 
 class CommandError(RuntimeError):
@@ -85,6 +100,20 @@ def parse_raw_command(text: str) -> tuple[str, tuple[Any, ...]]:
     if lowered in {"pipeline", "status"}:
         return "pipeline", ()
 
+    if lowered == "sources":
+        return "sources_list", ()
+
+    if lowered.startswith("sources"):
+        remainder = stripped.split(":", 1)[-1] if ":" in stripped else stripped[len("sources"):]
+        parts = [item.strip() for item in remainder.split("|")]
+        parts = [item for item in parts if item]
+        if len(parts) < 2:
+            raise CommandError("Use: sources: <name> | ok  OR  sources: <name> | updated")
+        name, action = parts[0], parts[1].casefold()
+        if action not in {"ok", "updated"}:
+            raise CommandError("Action must be 'ok' (no changes) or 'updated'.")
+        return "sources_resolve", (name, action)
+
     if lowered.startswith("update"):
         remainder = stripped.split(":", 1)[-1] if ":" in stripped else stripped[len("update"):]
         parts = [item.strip() for item in remainder.split("|")]
@@ -102,7 +131,8 @@ def parse_raw_command(text: str) -> tuple[str, tuple[Any, ...]]:
         return "update", (company, status, date_str)
 
     raise CommandError(
-        "Unrecognized command. Send 'pipeline' or "
+        "Unrecognized command. Send 'pipeline', 'sources', "
+        "'sources: <name> | ok|updated', or "
         "'update: <company> | <status> [| YYYY-MM-DD]'."
     )
 
@@ -128,16 +158,18 @@ def market_history_key(entry: dict[str, Any]) -> str:
     return f"{company}|{title}|{url}"
 
 
-def new_postings_section(tracker: Path) -> str:
+def new_postings_section(tracker: Path) -> tuple[str, int, int]:
     """Diff MARKET_HISTORY against state/market_history_seen.json.
 
     First run (no state file) just records the baseline without listing
     anything, so we don't dump the entire existing history as "new" the
     first time this runs.
+
+    Returns (formatted_text, verified_count, unverified_count).
     """
     entries = read_market_history(tracker)
     if not entries:
-        return ""
+        return "", 0, 0
 
     current = {market_history_key(entry): entry for entry in entries}
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -154,18 +186,50 @@ def new_postings_section(tracker: Path) -> str:
     )
 
     if not new_keys:
-        return ""
+        return "", 0, 0
 
-    lines = ["", f"Nuevos puestos detectados ({len(new_keys)}):"]
-    for key in new_keys[:10]:
-        entry = current[key]
-        status = entry.get("status", "")
-        lines.append(
-            f"- {entry.get('company')}: {entry.get('title')} ({status}) {entry.get('url', '')}"
-        )
-    if len(new_keys) > 10:
-        lines.append(f"...y {len(new_keys) - 10} más. Ver el tracker para el resto.")
-    return "\n".join(lines)
+    new_entries = [current[key] for key in new_keys]
+    # "removed" listings aren't actionable new opportunities -- drop them.
+    new_entries = [e for e in new_entries if e.get("status") != "removed"]
+    verified = [e for e in new_entries if e.get("status") in VERIFIED_STATUSES]
+    unverified = [e for e in new_entries if e.get("status") not in VERIFIED_STATUSES]
+
+    verified.sort(key=lambda e: compute_fit(e.get("title", "")), reverse=True)
+    unverified.sort(key=lambda e: compute_fit(e.get("title", "")), reverse=True)
+
+    lines = []
+    if verified:
+        lines.append("")
+        lines.append(f"Nuevos puestos ({len(verified)}), por fit:")
+        for entry in verified[:MAX_LISTED]:
+            fit = compute_fit(entry.get("title", ""))
+            lines.append(f"- {entry['company']}: {entry['title']} (fit {fit:.0f}/10) {entry.get('url', '')}")
+        if len(verified) > MAX_LISTED:
+            lines.append(f"...y {len(verified) - MAX_LISTED} más.")
+
+    if unverified:
+        lines.append("")
+        lines.append(f"⚠ Sin verificar ({len(unverified)}), revisar manualmente:")
+        for entry in unverified[:MAX_LISTED]:
+            status = entry.get("status", "")
+            lines.append(f"- {entry['company']}: {entry['title']} ({status}) {entry.get('url', '')}")
+        if len(unverified) > MAX_LISTED:
+            lines.append(f"...y {len(unverified) - MAX_LISTED} más.")
+
+    return "\n".join(lines), len(verified), len(unverified)
+
+
+def failed_sources_summary(tracker: Path, limit: int = 5) -> tuple[str, int]:
+    html = tracker.read_text(encoding="utf-8")
+    failed = read_flat_array(html, "FAILED_SOURCES")
+    if not failed:
+        return "", 0
+    lines = ["", f"Fuentes fallidas ({len(failed)}), responde 'sources' para ver todas:"]
+    for entry in failed[:limit]:
+        lines.append(f"- {entry.get('source')}: {entry.get('status', '')}")
+    if len(failed) > limit:
+        lines.append(f"...y {len(failed) - limit} más.")
+    return "\n".join(lines), len(failed)
 
 
 def pipeline_digest(tracker: Path) -> str:
@@ -187,20 +251,83 @@ def pipeline_digest(tracker: Path) -> str:
         ),
         key=lambda job: job["deadline"],
     )[:5]
+
+    postings_text, verified_count, unverified_count = new_postings_section(tracker)
+    failed_text, failed_count = failed_sources_summary(tracker)
+
+    action_items = []
+    if upcoming:
+        action_items.append(f"{len(upcoming)} deadline(s) próximos")
+    if unverified_count:
+        action_items.append(f"{unverified_count} puesto(s) nuevo(s) sin verificar")
+    if failed_count:
+        action_items.append(f"{failed_count} fuente(s) fallida(s) por revisar")
+    if action_items:
+        lines.append("")
+        lines.append("Qué hacer hoy: " + "; ".join(action_items) + ".")
+
     if upcoming:
         lines.append("")
         lines.append("Upcoming deadlines:")
         for job in upcoming:
             lines.append(f"- {job['company']} ({job['role']}): {job['deadline']}")
 
-    postings = new_postings_section(tracker)
-    if postings:
-        lines.append(postings)
+    if postings_text:
+        lines.append(postings_text)
+
+    if failed_text:
+        lines.append(failed_text)
 
     lines.append("")
     lines.append(f"Tracker: {TRACKER_URL}")
 
     return "\n".join(lines)
+
+
+def sources_list(tracker: Path) -> str:
+    html = tracker.read_text(encoding="utf-8")
+    failed = read_flat_array(html, "FAILED_SOURCES")
+    if not failed:
+        return "No hay fuentes fallidas pendientes."
+    lines = [f"Fuentes fallidas ({len(failed)}):"]
+    for entry in failed:
+        lines.append(f"- {entry.get('source')}: {entry.get('status', '')} — {entry.get('manual', '')}")
+    lines.append("")
+    lines.append("Responde 'sources: <nombre> | ok' (sin cambios) o 'sources: <nombre> | updated' (actualizada).")
+    return "\n".join(lines)
+
+
+def resolve_source(tracker: Path, name: str, action: str) -> str:
+    html = tracker.read_text(encoding="utf-8")
+    failed = read_flat_array(html, "FAILED_SOURCES")
+    key = normalize_key(name)
+    matches = [e for e in failed if key in normalize_key(e.get("source"))]
+
+    if not matches:
+        return f"No hay fuente fallida que coincida con '{name}'."
+    if len(matches) > 1:
+        options = ", ".join(e.get("source", "") for e in matches)
+        raise CommandError(f"'{name}' coincide con varias fuentes, sé más específico: {options}")
+
+    entry = matches[0]
+    remaining = [e for e in failed if e is not entry]
+    html = write_flat_array(html, "FAILED_SOURCES", remaining)
+
+    reviewed = read_flat_array(html, "REVIEWED_SOURCES")
+    reviewed.insert(
+        0,
+        {
+            "source": entry.get("source", ""),
+            "checked": date.today().isoformat(),
+            "status": "Actualizada por WhatsApp" if action == "updated" else "Sin cambios, confirmado por WhatsApp",
+            "observed": "",
+            "evidence": "",
+        },
+    )
+    html = write_flat_array(html, "REVIEWED_SOURCES", reviewed)
+
+    tracker.write_text(html, encoding="utf-8")
+    return f"Marcada '{entry.get('source')}' como {'actualizada' if action == 'updated' else 'sin cambios'}."
 
 
 def find_company_matches(jobs: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
@@ -275,6 +402,14 @@ def main() -> int:
             if kind == "pipeline":
                 print(pipeline_digest(args.tracker))
                 return 0
+            if kind == "sources_list":
+                print(sources_list(args.tracker))
+                return 0
+            if kind == "sources_resolve":
+                name, action = params
+                message = resolve_source(args.tracker, name, action)
+                print(message)
+                return 0 if message.startswith("Marcada") else 1
             company, status, date_str = params
             message = apply_status_update(
                 args.tracker, args.backup_dir, company, status, date_str
