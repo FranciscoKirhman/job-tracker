@@ -60,6 +60,10 @@ LINKEDIN_JOBAGE_DAYS = 7
 # discovered -- try the pattern in docs/JOB_DISCOVERY.md.
 WORKDAY_SOURCES = [
     {"company": "Abbott", "tenant": "abbott", "wd": "wd5", "site": "abbottcareers"},
+    {"company": "Pfizer", "tenant": "pfizer", "wd": "wd1", "site": "PfizerCareers"},
+    {"company": "Merck (MSD)", "tenant": "msd", "wd": "wd5", "site": "SearchJobs"},
+    {"company": "AstraZeneca", "tenant": "astrazeneca", "wd": "wd3", "site": "Careers"},
+    {"company": "Sanofi", "tenant": "sanofi", "wd": "wd3", "site": "SanofiCareers"},
 ]
 WORKDAY_KEYWORDS = ["Medical Science Liaison", "Medical Affairs", "Clinical", "Regulatory"]
 
