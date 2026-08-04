@@ -29,6 +29,8 @@ caller knows not to commit a tracker change.
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -45,6 +47,12 @@ from update_job_tracker import (  # noqa: E402
     write_atomic,
 )
 from tracker_context import build_context  # noqa: E402
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+STATE_PATH = REPO_ROOT / "state" / "market_history_seen.json"
+TRACKER_URL = "https://franciscokirhman.github.io/job-tracker/francisco-job-tracker-2026.html"
+MARKET_HISTORY_PATTERN = re.compile(r"const MARKET_HISTORY = (\[.*?\]);", re.S)
 
 
 class CommandError(RuntimeError):
@@ -99,6 +107,67 @@ def parse_raw_command(text: str) -> tuple[str, tuple[Any, ...]]:
     )
 
 
+def read_market_history(tracker: Path) -> list[dict[str, Any]]:
+    html = tracker.read_text(encoding="utf-8")
+    match = MARKET_HISTORY_PATTERN.search(html)
+    if not match:
+        return []
+    try:
+        return json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return []
+
+
+def market_history_key(entry: dict[str, Any]) -> str:
+    company = normalize_key(entry.get("company"))
+    job_id = normalize_key(entry.get("jobId"))
+    if job_id:
+        return f"{company}|{job_id}"
+    title = normalize_key(entry.get("title"))
+    url = normalize_key(entry.get("url"))
+    return f"{company}|{title}|{url}"
+
+
+def new_postings_section(tracker: Path) -> str:
+    """Diff MARKET_HISTORY against state/market_history_seen.json.
+
+    First run (no state file) just records the baseline without listing
+    anything, so we don't dump the entire existing history as "new" the
+    first time this runs.
+    """
+    entries = read_market_history(tracker)
+    if not entries:
+        return ""
+
+    current = {market_history_key(entry): entry for entry in entries}
+    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    if STATE_PATH.exists():
+        seen = set(json.loads(STATE_PATH.read_text(encoding="utf-8")))
+        new_keys = [key for key in current if key not in seen]
+    else:
+        new_keys = []
+
+    STATE_PATH.write_text(
+        json.dumps(sorted(current.keys()), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    if not new_keys:
+        return ""
+
+    lines = ["", f"Nuevos puestos detectados ({len(new_keys)}):"]
+    for key in new_keys[:10]:
+        entry = current[key]
+        status = entry.get("status", "")
+        lines.append(
+            f"- {entry.get('company')}: {entry.get('title')} ({status}) {entry.get('url', '')}"
+        )
+    if len(new_keys) > 10:
+        lines.append(f"...y {len(new_keys) - 10} más. Ver el tracker para el resto.")
+    return "\n".join(lines)
+
+
 def pipeline_digest(tracker: Path) -> str:
     jobs = read_tracker(tracker)[1]
     context = build_context(tracker, jobs)
@@ -123,6 +192,13 @@ def pipeline_digest(tracker: Path) -> str:
         lines.append("Upcoming deadlines:")
         for job in upcoming:
             lines.append(f"- {job['company']} ({job['role']}): {job['deadline']}")
+
+    postings = new_postings_section(tracker)
+    if postings:
+        lines.append(postings)
+
+    lines.append("")
+    lines.append(f"Tracker: {TRACKER_URL}")
 
     return "\n".join(lines)
 
