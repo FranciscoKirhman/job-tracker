@@ -67,8 +67,15 @@ def read_market_history(path: Path) -> tuple[str, list[dict[str, Any]], re.Match
         return html, [], None
     try:
         entries = json.loads(match.group(2))
-    except json.JSONDecodeError:
-        entries = []
+    except json.JSONDecodeError as exc:
+        # A parse failure here used to silently become "this side has zero
+        # entries", which then merges as if every entry that only exists on
+        # the corrupted side were new -- and, worse, write_if_changed()
+        # would happily overwrite the corrupted file with a "recovered"
+        # version built while blind to whatever was actually there. Fail
+        # loudly instead: a corrupt MARKET_HISTORY block needs a human to
+        # look at it, not an automated merge silently treating it as empty.
+        raise RuntimeError(f"MARKET_HISTORY in {path} is not valid JSON: {exc}") from exc
     return html, entries, match
 
 
@@ -97,8 +104,8 @@ def read_discarded(path: Path) -> tuple[str, list[dict[str, Any]], re.Match[str]
         return html, [], None
     try:
         entries = json.loads(match.group(2))
-    except json.JSONDecodeError:
-        entries = []
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"DISCARDED_POSTINGS in {path} is not valid JSON: {exc}") from exc
     return html, entries, match
 
 
@@ -115,7 +122,13 @@ def merge_discarded(local_entries: list[dict], repo_entries: list[dict]) -> list
 def write_discarded_if_changed(
     path: Path, html: str, match: re.Match[str], merged: list[dict], existing: list[dict]
 ) -> bool:
-    if {discarded_key(e) for e in existing} == {discarded_key(e) for e in merged}:
+    # Comparing key SETS instead of content meant a discardedAt refresh (or
+    # any other field-level update merge() picked from the other side)
+    # never actually got written -- same keys before and after, so this
+    # returned False and the file kept its stale copy forever. Compare the
+    # full keyed content instead (dict equality, so key order doesn't
+    # matter but any value difference does).
+    if {discarded_key(e): e for e in existing} == {discarded_key(e): e for e in merged}:
         return False
     serialized = json.dumps(merged, ensure_ascii=False, indent=2)
     new_html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
@@ -126,9 +139,11 @@ def write_discarded_if_changed(
 def write_if_changed(
     path: Path, html: str, match: re.Match[str], merged: list[dict], existing: list[dict]
 ) -> bool:
-    existing_keys = {entry_key(entry) for entry in existing}
-    merged_keys = {entry_key(entry) for entry in merged}
-    if existing_keys == merged_keys:
+    # Same fix as write_discarded_if_changed(): compare keyed CONTENT, not
+    # just the set of identity keys, so a merge() pick of the fresher
+    # lastConfirmed/status/etc. for an already-shared entry actually gets
+    # persisted instead of being silently discarded as "nothing changed".
+    if {entry_key(entry): entry for entry in existing} == {entry_key(entry): entry for entry in merged}:
         return False
     serialized = json.dumps(merged, ensure_ascii=False, indent=2)
     new_html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
@@ -182,8 +197,13 @@ def sync_tracked_identities(local_html: str, state_path: Path) -> tuple[bool, in
 def main() -> int:
     args = parse_args()
 
-    local_html, local_entries, local_match = read_market_history(args.local)
-    repo_html, repo_entries, repo_match = read_market_history(args.repo)
+    try:
+        local_html, local_entries, local_match = read_market_history(args.local)
+        repo_html, repo_entries, repo_match = read_market_history(args.repo)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        print("Aborting without writing anything -- fix the corrupt file by hand first.", file=sys.stderr)
+        return 2
 
     if local_match is None or repo_match is None:
         print("MARKET_HISTORY block not found in one of the files.", file=sys.stderr)
@@ -212,8 +232,15 @@ def main() -> int:
 
     # DISCARDED_POSTINGS is a newer block -- older local copies may not have
     # it yet, so this is best-effort, not a hard requirement like MARKET_HISTORY.
-    local_d_html, local_d_entries, local_d_match = read_discarded(args.local)
-    repo_d_html, repo_d_entries, repo_d_match = read_discarded(args.repo)
+    # A corrupt block here shouldn't discard the MARKET_HISTORY sync already
+    # written above -- warn and skip just this part instead of aborting.
+    try:
+        local_d_html, local_d_entries, local_d_match = read_discarded(args.local)
+        repo_d_html, repo_d_entries, repo_d_match = read_discarded(args.repo)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        print("Skipping DISCARDED_POSTINGS sync this run; MARKET_HISTORY sync above still applied.", file=sys.stderr)
+        local_d_match = repo_d_match = None
     if local_d_match is not None and repo_d_match is not None:
         merged_d = merge_discarded(local_d_entries, repo_d_entries)
         d_local_changed = write_discarded_if_changed(args.local, local_d_html, local_d_match, merged_d, local_d_entries)
