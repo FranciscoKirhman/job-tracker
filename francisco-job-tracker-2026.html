@@ -686,7 +686,7 @@ html{scroll-padding-top:96px;}
   <div class="hdr">
     <div class="hdr-l">
       <div class="hdr-title-row"><h1>Jobs3 Control Center</h1><span class="tracker-live">Tracker limpio</span></div>
-      <p class="header-context"><strong id="currentPageLabel">Inicio</strong><span class="context-separator">·</span><span>33 postulaciones canónicas</span></p>
+      <p class="header-context"><strong id="currentPageLabel">Inicio</strong><span class="context-separator">·</span><span id="headerAppCount">33 postulaciones canónicas</span></p>
     </div>
     <div class="hdr-r">
       <button class="btn btn-save" onclick="saveFile()"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>Guardar</button>
@@ -7200,9 +7200,9 @@ function discardNewJob(key){
   renderNewJobs();toast('No se mostrará más. Recuerda hacer clic en Guardar para que la automatización también lo respete.');
 }
 function isAlreadyApplied(j){
-  const company=normKey(j.company),role=normKey(j.role);
+  const company=normKey(canonicalCompanyName(j.company)),role=normKey(j.role);
   if(!company||!role)return false;
-  return S.jobs.some(x=>normKey(x.company)===company&&normKey(x.role)===role);
+  return S.jobs.some(x=>normKey(canonicalCompanyName(x.company))===company&&normKey(x.role)===role);
 }
 const CHILE_LOCATION_SIGNALS=['chile','santiago','concepcion','providencia','las condes','valparaiso','vina del mar','antofagasta','temuco','region metropolitana'];
 function normLocation(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'');}
@@ -7494,7 +7494,7 @@ function renderNewJobs(){
 
 function renderInterest(){
   const list=document.getElementById('interestJobsList');if(!list)return;
-  const jobs=[...ADJACENT_OPPORTUNITIES].sort((a,b)=>String(b.checked).localeCompare(String(a.checked))||String(a.company).localeCompare(String(b.company),'es'));
+  const jobs=ADJACENT_OPPORTUNITIES.filter(j=>!isAlreadyApplied(j)).sort((a,b)=>String(b.checked).localeCompare(String(a.checked))||String(a.company).localeCompare(String(b.company),'es'));
   const high=jobs.filter(x=>+x.fit>=8),stretch=jobs.filter(x=>x.decision==='Stretch');
   document.getElementById('interestNavCnt').textContent=jobs.length;
   document.getElementById('interestTotal').textContent=jobs.length;
@@ -7623,7 +7623,7 @@ function renderHome(){
   const sourcePending=FAILED_SOURCES.filter(x=>!sourceInputs[x.source]).length;
   const highFitNew=NEW_JOB_RECOMMENDATIONS.filter(x=>+x.fit>=8);
   const highFitAdjacent=ADJACENT_OPPORTUNITIES.filter(x=>+x.fit>=8);
-  const topDecisions=allComparableOpportunities().sort((a,b)=>decisionScoreMeta(b).score-decisionScoreMeta(a).score||Number(b.fit)-Number(a.fit)).slice(0,3);
+  const topDecisions=allComparableOpportunities().filter(x=>!isAlreadyApplied(x)).sort((a,b)=>decisionScoreMeta(b).score-decisionScoreMeta(a).score||Number(b.fit)-Number(a.fit)).slice(0,3);
   const feedChannels=JOBS3_AUTOMATION_FEED&&JOBS3_AUTOMATION_FEED.channels||{};
   const feedActions=Object.values(feedChannels).flatMap(channel=>normalizedFeedItems(channel&&channel.actions));
   const feedAlerts=Object.values(feedChannels).flatMap(channel=>normalizedFeedItems(channel&&channel.alerts));
@@ -7686,6 +7686,7 @@ function renderInsights(){
 
 function renderMetrics(){
   const m=calcM();
+  const headerCount=document.getElementById('headerAppCount');if(headerCount)headerCount.textContent=`${m.n} postulaci${m.n===1?'ón':'ones'} canónica${m.n===1?'':'s'}`;
   const cards=[
     {lbl:'Applied',val:m.sent,sub:`${m.n} tracked · ${m.todo} to apply`,acc:'#4f8ef7'},
     {lbl:'Interviews',val:m.everInterviewed,sub:`${m.totalIv} rounds logged${m.upcoming>0?' · '+m.upcoming+' upcoming':''}`,acc:'#22d3ee'},
@@ -8085,7 +8086,7 @@ const jd={company:co,companyType:gget('f_cotype').trim(),role,location:gget('f_l
 if(S.editingId){const idx=S.jobs.findIndex(j=>j.id===S.editingId);if(idx!==-1){const before=S.jobs[idx],oldCount=(before.interviews||[]).length,newRows=ivs.slice(oldCount);if(newRows.some(iv=>!iv.date||(!iv.type&&!iv.notes))){toast('Cada entrevista nueva necesita fecha y evidencia.');return;}rememberCanonicalChange(before,'Edición de postulación');S.jobs[idx]={...before,...jd,status:newRows.length&&!['rejected','withdrawn','offer'].includes(before.status)?'interview':before.status,replyDate:newRows.length&&!before.replyDate?newRows[0].date:jd.replyDate};}toast('Actualizada ✓');}else{jd.id=gid();jd.createdAt=today();jd.status='todo';S.jobs.push(jd);toast('Añadida como Por postular ✓');}save();closeModal();renderAll();updateUndoButton();}
 
 // INIT
-function renderAll(){renderMetrics();renderHome();renderTable();renderHistory();renderCompanyRadar();renderNewJobs();renderInterest();renderShortlist();renderCalendar();renderSources();renderMail();renderAI();renderJobs3AutomationFeed();}
+function renderAll(){renderMetrics();renderHome();renderTable();renderHistory();renderCompanyRadar();renderNewJobs();renderInterest();renderCalendar();renderSources();renderMail();renderAI();renderJobs3AutomationFeed();}
 loadData();S.collapsed=new Set(S.jobs.map(j=>j.company));configureHistoryStatus();renderAll();updateUndoButton();initPage();initJobs3Chat();
 window.addEventListener('beforeunload',()=>save());
 document.addEventListener('keydown',e=>{

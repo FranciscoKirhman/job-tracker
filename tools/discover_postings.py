@@ -73,43 +73,57 @@ WORKDAY_KEYWORDS = ["Medical Science Liaison", "Medical Affairs", "Clinical", "R
 # work-authorization/residency requirements), not open globally. Caught a
 # real case of this: a Merck "USA - REMOTE - REMOTE" MSL posting explicitly
 # required residing in the US Southeast with up to 50% in-territory travel --
-# it passed the naive "remote" substring check and, because compute_fit()
-# only looks at the title, scored a perfect 10/10 and got auto-added as a
-# HIGH-priority application. If a location names one of these countries,
-# treat it as that country's domestic remote, not Chile-viable, even though
-# the string also contains "remote".
-NON_CHILE_REMOTE_COUNTRY_SIGNALS = [
-    "usa", "united states", "u.s.a", "u.s.",
-    "switzerland", "schweiz", "suisse",
-    "mexico", "méxico",
-    "australia",
-    "greece",
-    "canada",
-    "united kingdom", "uk -", "u.k.",
-    "germany", "deutschland",
-    "spain", "españa",
-    "brazil", "brasil",
-    "argentina",
-    "colombia",
-    "peru", "perú",
-]
-# Same failure mode can hide in the TITLE instead of the location field (the
-# Merck posting above literally had "(Southeast)" baked into the title) --
-# checked independently of location.
-US_REGION_TITLE_SIGNALS = [
-    "southeast", "northeast", "midwest", "southwest",
-    "pacific northwest", "mid-atlantic", "west coast", "east coast",
-    "gulf coast", "great lakes", "mountain west", "new england",
+# it passed a naive "remote" substring check and, because compute_fit() only
+# looks at the title, scored a perfect 10/10 and got auto-added as a
+# HIGH-priority application.
+#
+# First fix here was a denylist of non-Chile countries -- wrong shape for the
+# problem: there are ~195 countries and endless spelling/abbreviation
+# variants ("US", "U.S", "US -", "UK", "France", "Japan", "Puerto Rico", ...
+# all slipped through a ~14-country denylist in testing). Flipped to an
+# allowlist instead: a "remote" location only counts as Chile-viable if it
+# actually SAYS something Chile/LATAM/global -- anything else defaults to
+# excluded, which is the safe direction to be wrong in (missing a genuinely
+# open posting costs nothing; auto-adding one Francisco can't apply to costs
+# his time and once fired off a WhatsApp alert about it).
+CHILE_VIABLE_REMOTE_SIGNALS = [
+    "chile",
+    "latam", "latin america", "latinoamerica",
+    "sudamerica", "south america",
+    "global", "worldwide", "any location", "all locations", "anywhere",
 ]
 
 
 def _is_chile_viable_location(location: str) -> bool:
-    location_lower = location.casefold()
+    location_lower = _normalize_for_match(location)
     if "chile" in location_lower:
         return True
     if "remote" not in location_lower:
         return False
-    return not any(signal in location_lower for signal in NON_CHILE_REMOTE_COUNTRY_SIGNALS)
+    if any(signal in location_lower for signal in CHILE_VIABLE_REMOTE_SIGNALS):
+        return True
+    # A bare "Remote" with no other qualifier at all (no country name, no
+    # region) isn't scoped to anywhere in particular -- every real
+    # country-restricted example seen so far has the country named
+    # alongside "Remote" ("USA - Remote", "Mexico - Remote", etc.), so an
+    # unqualified "Remote" is the one ambiguous case still treated as
+    # viable. Anything with extra text alongside "remote" that isn't one of
+    # the Chile/LATAM/global signals above is assumed to be naming some
+    # other place and excluded.
+    return location_lower.strip() == "remote"
+
+
+# Same failure mode can hide in the TITLE instead of the location field (the
+# Merck posting above literally had "(Southeast)" baked into the title) --
+# checked independently of location, since the location-based check above
+# can't help when location itself is a bare, unscoped "Remote".
+US_REGION_TITLE_SIGNALS = [
+    "southeast", "northeast", "midwest", "southwest",
+    "pacific northwest", "mid-atlantic", "west coast", "east coast",
+    "gulf coast", "great lakes", "mountain west", "new england",
+    "us citizen", "us citizenship", "citizenship required",
+    "security clearance", "us work authorization", "authorized to work in the us",
+]
 
 
 def _has_us_region_restriction(title: str) -> bool:
@@ -208,22 +222,43 @@ def fetch_linkedin(query: str, location: str) -> list[dict[str, Any]]:
         return []
 
     stamp = now_stamp()
-    return [
-        {
-            "status": "open",
-            "company": item.get("company", ""),
-            "title": item.get("title", ""),
-            "jobId": f"li-{item.get('id', '')}",
-            "location": item.get("location", ""),
-            "firstSeen": stamp,
-            "lastConfirmed": stamp,
-            "removedOn": "",
-            "source": "LinkedIn Jobs",
-            "url": item.get("url", ""),
-            "details": f"Found via automated LinkedIn search for {query!r}.",
-        }
-        for item in payload.get("results", [])
-    ]
+    entries = []
+    for item in payload.get("results", []):
+        # The LinkedIn CLI's own type is `location: string | null` -- a
+        # scrape can fail to extract it, giving a JSON `null`, not a missing
+        # key, so `.get(..., "")` alone doesn't catch it and `.casefold()`
+        # inside the filters below would crash on None.
+        location = item.get("location") or ""
+        title = item.get("title") or ""
+        # LinkedIn's own "Chile" location search (query-scoped via -l) is a
+        # soft signal, not a guarantee -- it's known to loosely include
+        # globally/remote-tagged postings from other countries. Only
+        # second-guess it when we actually have location text to evaluate;
+        # if the scraper failed to extract one (location is empty/None, see
+        # above), trust the query-level Chile scoping rather than silently
+        # dropping an otherwise-legitimate result over a missing field --
+        # unlike Workday, LinkedIn has no other source of postings from
+        # countries never mentioned in the query at all.
+        if location and not _is_chile_viable_location(location):
+            continue
+        if _has_us_region_restriction(title):
+            continue
+        entries.append(
+            {
+                "status": "open",
+                "company": item.get("company", ""),
+                "title": title,
+                "jobId": f"li-{item.get('id', '')}",
+                "location": location,
+                "firstSeen": stamp,
+                "lastConfirmed": stamp,
+                "removedOn": "",
+                "source": "LinkedIn Jobs",
+                "url": item.get("url", ""),
+                "details": f"Found via automated LinkedIn search for {query!r}.",
+            }
+        )
+    return entries
 
 
 def fetch_workday(source: dict[str, str], keyword: str) -> list[dict[str, Any]]:
