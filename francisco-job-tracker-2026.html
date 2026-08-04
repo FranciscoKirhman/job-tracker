@@ -209,7 +209,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;hei
   --border2:rgba(255,255,255,.14);
   --text:#f5f5f7;
   --text2:#a7a7b0;
-  --text3:#6e6e78;
+  --text3:#8e8e93;
   --blue:#0a84ff;
   --blue2:#0071e3;
   --purple:#bf5af2;
@@ -629,6 +629,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 html{background:#000;color-scheme:dark;}
 body::before{background:radial-gradient(circle at 85% -10%,rgba(10,132,255,.16),transparent 34rem);}
 .hdr{position:sticky;top:0;z-index:80;padding:14px 0;margin-bottom:12px;background:rgba(0,0,0,.78);backdrop-filter:saturate(180%) blur(24px);}
+/* The sticky header has no scroll anchor of its own, so any scrollIntoView
+   or manual scroll that lands content near the top hides it underneath —
+   scroll-padding-top reserves that space (values match measured header
+   height per breakpoint: ~76px wide, ~103px mid, ~127px stacked mobile). */
+html{scroll-padding-top:96px;}
+@media(max-width:900px){html{scroll-padding-top:128px;}}
+@media(max-width:620px){html{scroll-padding-top:150px;}}
 .btn,.nav button,.sort-btn,.f-search,.f-sel,.scope-btn,.home-go,.source-action{min-height:38px;}
 .s-card,.pipe-wrap,.ch,.t-wrap,.home-panel,.home-metric,.collapse-card,.source-card,.mail-card,.radar-company,.jobs3-feed{box-shadow:0 14px 40px rgba(0,0,0,.24);}
 .hdr-l p,.s-card .lbl,.s-card .sub,.pipe-legend span,.secondary-stats,.ch h3,.ch .ch-sub,.ch-leg span,.co-type,.j-row td,.stage-pill,.iv-next,.d-sec h4,.d-sec ul li,.d-notes h4,.d-notes p,.kw,.d-meta-item,.d-link,.jobs3-feed-card b,.jobs3-feed-card time,.jobs3-feed-card p,.jobs3-feed-empty{font-size:max(.72rem,1em);}
