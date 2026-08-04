@@ -7063,7 +7063,7 @@ function focusNewJob(key){
   if(j.origin==='Para ti'){goPage('interest');return;}
   goPage('new');NEW_FILTERS.q='';NEW_FILTERS.company='';NEW_FILTERS.lane='';NEW_FILTERS.decision='';NEW_FILTERS.fit='all';NEW_FILTERS.sort='fit';
   const q=document.getElementById('newSearch'),co=document.getElementById('newCompany'),ln=document.getElementById('newLane'),dc=document.getElementById('newDecision'),so=document.getElementById('newSort');if(q)q.value='';if(co)co.value='';if(ln)ln.value='';if(dc)dc.value='';if(so)so.value='fit';
-  renderNewJobs();setTimeout(()=>{const group=document.getElementById('newco-'+normKey(j.company)),card=document.getElementById('newjob-'+normKey(opportunityKey(j)));if(group)group.open=true;if(card)card.open=true;if(card)card.scrollIntoView({behavior:'smooth',block:'center'});},0);
+  renderNewJobs();setTimeout(()=>{const group=document.getElementById('newco-'+normKey(j.company)),card=document.getElementById('newjob-'+normKey(opportunityKey(j)));if(group)group.open=true;if(card)card.open=true;setTimeout(()=>{if(card)card.scrollIntoView({behavior:'smooth',block:'center'});},60);},60);
 }
 function jumpToApplication(id){
   const j=S.jobs.find(x=>x.id===id);if(!j)return;
