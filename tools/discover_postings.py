@@ -271,10 +271,55 @@ def already_tracked(entry: dict[str, Any], tracked_keys: set[str]) -> bool:
     return False
 
 
-def write_market_history(html: str, match: re.Match[str], entries: list[dict[str, Any]]) -> None:
-    serialized = json.dumps(entries, ensure_ascii=False, indent=2)
-    new_html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
-    TRACKER_PATH.write_text(new_html, encoding="utf-8")
+SAVED_DATA_PATTERN = re.compile(
+    r"(// TRACKER_DATA_START\s*\nconst SAVED_DATA\s*=\s*)(\[[\s\S]*?\])(\s*;\s*\n// TRACKER_DATA_END)"
+)
+
+
+def make_todo_record(entry: dict[str, Any], fit_score: float) -> dict[str, Any]:
+    today = datetime.now(timezone.utc).astimezone().date().isoformat()
+    unique_suffix = abs(hash((entry["company"].casefold(), entry["title"].casefold()))) % 1000
+    return {
+        "id": f"JOB_{int(datetime.now(timezone.utc).timestamp() * 1000)}_{unique_suffix:03d}",
+        "priority": "HIGH",
+        "company": entry["company"],
+        "companyType": "",
+        "role": entry["title"],
+        "location": entry.get("location", ""),
+        "category": "",
+        "jobId": entry.get("jobId", ""),
+        "posted": "",
+        "deadline": "",
+        "status": "todo",
+        "appliedDate": "",
+        "replyDate": "",
+        "rejectedDate": "",
+        "interviewDate": "",
+        "interviews": [],
+        "requirements": [],
+        "responsibilities": [],
+        "myMatch": [],
+        "gaps": [],
+        "keywords": [],
+        "fitScore": round(fit_score, 1),
+        "cvVersion": "",
+        "coverLetter": "",
+        "folderPath": "",
+        "links": entry.get("url", ""),
+        "strategicNotes": "",
+        "jobDescription": entry.get("details", ""),
+        "createdAt": today,
+    }
+
+
+def add_todo_records(html: str, records: list[dict[str, Any]]) -> str:
+    match = SAVED_DATA_PATTERN.search(html)
+    if not match:
+        raise RuntimeError("SAVED_DATA block not found in tracker")
+    jobs = json.loads(match.group(2))
+    jobs.extend(records)
+    serialized = json.dumps(jobs, ensure_ascii=False, indent=2)
+    return html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
 
 
 def main() -> int:
@@ -310,13 +355,21 @@ def main() -> int:
         return 0
 
     merged = existing + new_entries
-    write_market_history(html, match, merged)
+    serialized = json.dumps(merged, ensure_ascii=False, indent=2)
+    html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
 
     high_fit = [(e, compute_fit(e["title"])) for e in new_entries]
     high_fit = [(e, score) for e, score in high_fit if score >= HIGH_FIT_THRESHOLD]
     high_fit.sort(key=lambda pair: pair[1], reverse=True)
 
     print(f"Added {len(new_entries)} new posting(s), {len(high_fit)} high-fit (>= {HIGH_FIT_THRESHOLD}).")
+
+    if high_fit:
+        todo_records = [make_todo_record(entry, score) for entry, score in high_fit]
+        html = add_todo_records(html, todo_records)
+        print(f"Auto-added {len(todo_records)} high-fit posting(s) to 'Por postular'.")
+
+    TRACKER_PATH.write_text(html, encoding="utf-8")
 
     if high_fit:
         STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -327,7 +380,7 @@ def main() -> int:
             state.add(entry_key(entry))
         STATE_PATH.write_text(json.dumps(sorted(state), ensure_ascii=False, indent=2), encoding="utf-8")
 
-        lines = [f"Alerta: {len(high_fit)} puesto(s) nuevo(s) de alto fit:"]
+        lines = [f"Alerta: {len(high_fit)} puesto(s) nuevo(s) de alto fit, agregados a Por postular:"]
         for entry, score in high_fit[:5]:
             lines.append(f"- {entry['company']}: {entry['title']} (fit {score:.0f}/10) {entry['url']}")
         sys.argv = ["send_whatsapp.py", "\n".join(lines)]
