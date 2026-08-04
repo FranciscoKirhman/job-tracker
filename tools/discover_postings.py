@@ -68,6 +68,54 @@ WORKDAY_SOURCES = [
 ]
 WORKDAY_KEYWORDS = ["Medical Science Liaison", "Medical Affairs", "Clinical", "Regulatory"]
 
+# "Remote" alone doesn't mean Chile-eligible -- a lot of Workday postings are
+# "<Country> - Remote", meaning remote WITHIN that country's borders (its own
+# work-authorization/residency requirements), not open globally. Caught a
+# real case of this: a Merck "USA - REMOTE - REMOTE" MSL posting explicitly
+# required residing in the US Southeast with up to 50% in-territory travel --
+# it passed the naive "remote" substring check and, because compute_fit()
+# only looks at the title, scored a perfect 10/10 and got auto-added as a
+# HIGH-priority application. If a location names one of these countries,
+# treat it as that country's domestic remote, not Chile-viable, even though
+# the string also contains "remote".
+NON_CHILE_REMOTE_COUNTRY_SIGNALS = [
+    "usa", "united states", "u.s.a", "u.s.",
+    "switzerland", "schweiz", "suisse",
+    "mexico", "méxico",
+    "australia",
+    "greece",
+    "canada",
+    "united kingdom", "uk -", "u.k.",
+    "germany", "deutschland",
+    "spain", "españa",
+    "brazil", "brasil",
+    "argentina",
+    "colombia",
+    "peru", "perú",
+]
+# Same failure mode can hide in the TITLE instead of the location field (the
+# Merck posting above literally had "(Southeast)" baked into the title) --
+# checked independently of location.
+US_REGION_TITLE_SIGNALS = [
+    "southeast", "northeast", "midwest", "southwest",
+    "pacific northwest", "mid-atlantic", "west coast", "east coast",
+    "gulf coast", "great lakes", "mountain west", "new england",
+]
+
+
+def _is_chile_viable_location(location: str) -> bool:
+    location_lower = location.casefold()
+    if "chile" in location_lower:
+        return True
+    if "remote" not in location_lower:
+        return False
+    return not any(signal in location_lower for signal in NON_CHILE_REMOTE_COUNTRY_SIGNALS)
+
+
+def _has_us_region_restriction(title: str) -> bool:
+    lowered = _normalize_for_match(title)
+    return any(signal in lowered for signal in US_REGION_TITLE_SIGNALS)
+
 FIT_KEYWORDS = {
     "medical science liaison": 4,
     "medical affairs": 3,
@@ -195,12 +243,17 @@ def fetch_workday(source: dict[str, str], keyword: str) -> list[dict[str, Any]]:
     entries = []
     for job in payload.get("jobPostings", []):
         location = job.get("locationsText", "")
+        title = job.get("title", "")
         # Workday's CxS search has no reliable public location facet, so it
         # returns postings for every country the company hires in. Filter
         # client-side to Chile/remote -- otherwise this floods results with
         # e.g. Malaysia, Uzbekistan, Algeria postings irrelevant to Francisco.
-        location_lower = location.casefold()
-        if "chile" not in location_lower and "remote" not in location_lower:
+        # "Remote" alone isn't enough (see _is_chile_viable_location): a lot
+        # of these are "<Country> - Remote", domestic remote work scoped to
+        # that country, not open to a Chile-based candidate.
+        if not _is_chile_viable_location(location):
+            continue
+        if _has_us_region_restriction(title):
             continue
         path = job.get("externalPath", "")
         entries.append(
