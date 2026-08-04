@@ -33,6 +33,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local", required=True, type=Path)
     parser.add_argument("--repo", required=True, type=Path)
+    parser.add_argument(
+        "--tracked-state",
+        type=Path,
+        help="Where to write the local machine's tracked-application identity "
+        "keys, read-only input for the cloud side's already-tracked checks. "
+        "Defaults to state/tracked_identities.json next to --repo.",
+    )
     return parser.parse_args()
 
 
@@ -89,6 +96,49 @@ def write_if_changed(
     return True
 
 
+SAVED_DATA_PATTERN = re.compile(
+    r"// TRACKER_DATA_START\s*\nconst SAVED_DATA\s*=\s*(\[[\s\S]*?\])\s*;\s*\n// TRACKER_DATA_END"
+)
+
+
+def read_saved_data(html: str) -> list[dict[str, Any]]:
+    match = SAVED_DATA_PATTERN.search(html)
+    if not match:
+        return []
+    return json.loads(match.group(1))
+
+
+def tracked_identity_keys(saved_data: list[dict[str, Any]]) -> set[str]:
+    keys = set()
+    for record in saved_data:
+        company = normalize_key(record.get("company"))
+        role = normalize_key(record.get("role"))
+        if company and role:
+            keys.add(f"{company}|{role}")
+        job_id = normalize_key(record.get("jobId"))
+        if job_id and re.search(r"\d", job_id):
+            keys.add(f"jobid|{job_id}")
+    return keys
+
+
+def sync_tracked_identities(local_html: str, state_path: Path) -> tuple[bool, int]:
+    """One-way, read-only local -> repo sync of application identity keys
+    (never job data itself, just enough to recognize 'already applied to
+    this'). Additive only -- never removes a key -- so the cloud side's
+    already-tracked checks can only get MORE cautious over time, never less.
+    """
+    new_keys = tracked_identity_keys(read_saved_data(local_html))
+    existing: set[str] = set()
+    if state_path.exists():
+        existing = set(json.loads(state_path.read_text(encoding="utf-8")))
+    merged = existing | new_keys
+    if merged == existing:
+        return False, 0
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(sorted(merged), ensure_ascii=False, indent=2), encoding="utf-8")
+    return True, len(merged) - len(existing)
+
+
 def main() -> int:
     args = parse_args()
 
@@ -112,6 +162,14 @@ def main() -> int:
         f"({'local updated, ' if local_changed else ''}+{max(0, new_for_local)} new to local; "
         f"{'repo updated, ' if repo_changed else ''}+{max(0, new_for_repo)} new to repo)"
     )
+
+    tracked_state_path = args.tracked_state or (args.repo.parent / "state" / "tracked_identities.json")
+    fresh_local_html = args.local.read_text(encoding="utf-8")
+    identities_changed, new_identity_count = sync_tracked_identities(fresh_local_html, tracked_state_path)
+    if identities_changed:
+        print(f"Synced tracked identities: +{new_identity_count} new (now watching for these to stay hidden from discovery/digest).")
+        repo_changed = True
+
     print(f"REPO_CHANGED={'1' if repo_changed else '0'}")
     return 0
 

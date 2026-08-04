@@ -58,16 +58,33 @@ from update_job_tracker import (  # noqa: E402
     write_atomic,
 )
 from tracker_context import build_context  # noqa: E402
-from discover_postings import compute_fit  # noqa: E402
+from discover_postings import (  # noqa: E402
+    already_tracked,
+    compute_fit,
+    tracked_identity_keys,
+)
 from js_literal import read_flat_array, write_flat_array  # noqa: E402
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = REPO_ROOT / "state" / "market_history_seen.json"
+SYNCED_TRACKED_PATH = REPO_ROOT / "state" / "tracked_identities.json"
 TRACKER_URL = "https://franciscokirhman.github.io/job-tracker/francisco-job-tracker-2026.html"
 MARKET_HISTORY_PATTERN = re.compile(r"const MARKET_HISTORY = (\[.*?\]);", re.S)
 VERIFIED_STATUSES = {"open"}
 MAX_LISTED = 8
+
+
+def all_tracked_keys(tracker: Path) -> set[str]:
+    """Union of identity keys from this repo's own SAVED_DATA plus whatever
+    the local machine last synced over (state/tracked_identities.json) --
+    covers applications Francisco updated locally that haven't otherwise
+    reached the repo (SAVED_DATA itself is deliberately not synced
+    bidirectionally, see docs/LOCAL_SYNC_SETUP.md)."""
+    keys = tracked_identity_keys(read_tracker(tracker)[1])
+    if SYNCED_TRACKED_PATH.exists():
+        keys |= set(json.loads(SYNCED_TRACKED_PATH.read_text(encoding="utf-8")))
+    return keys
 
 
 class CommandError(RuntimeError):
@@ -191,6 +208,15 @@ def new_postings_section(tracker: Path) -> tuple[str, int, int]:
     new_entries = [current[key] for key in new_keys]
     # "removed" listings aren't actionable new opportunities -- drop them.
     new_entries = [e for e in new_entries if e.get("status") != "removed"]
+    # Drop anything already tracked in SAVED_DATA (applied/rejected/interview/
+    # etc, including status updates made on the local machine and synced
+    # over) -- a MARKET_HISTORY entry being "new" to us doesn't mean the
+    # application itself is new.
+    tracked_keys = all_tracked_keys(tracker)
+    new_entries = [
+        e for e in new_entries
+        if not already_tracked({"company": e.get("company"), "title": e.get("title"), "jobId": e.get("jobId")}, tracked_keys)
+    ]
     verified = [e for e in new_entries if e.get("status") in VERIFIED_STATUSES]
     unverified = [e for e in new_entries if e.get("status") not in VERIFIED_STATUSES]
 

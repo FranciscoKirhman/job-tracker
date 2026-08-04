@@ -1,0 +1,46 @@
+name: Digest watchdog
+
+# GitHub's scheduled-workflow cron is best-effort: it can be delayed or
+# silently skipped under load (documented behavior, most likely for crons
+# landing exactly on the hour -- see whatsapp.yml's schedule comment). This
+# runs a few hours after the expected daily digest and checks whether it
+# actually fired. If not, it retries the digest itself and says so in the
+# message, instead of the miss going unnoticed until someone asks why no
+# message arrived.
+
+on:
+  schedule:
+    # ~11:00 Santiago time, a generous ~3h buffer after the 08:07 digest.
+    - cron: "0 15 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check whether today's scheduled digest ran
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '20 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          count=$(gh api "repos/${{ github.repository }}/actions/workflows/whatsapp.yml/runs?event=schedule&status=completed&per_page=10" \
+            --jq "[.workflow_runs[] | select(.created_at >= \"$since\")] | length")
+          echo "Found $count scheduled run(s) in the last 20h."
+          echo "ran=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Retry the digest and flag the miss
+        if: steps.check.outputs.ran == 'false'
+        run: |
+          echo "No scheduled digest found in the last 20h -- triggering a catch-up run."
+          gh workflow run whatsapp.yml -f raw_message="⚠ El digest programado de hoy no se ejecutó a tiempo (falla conocida de GitHub Actions con crons en punto de hora). Reintentando ahora."
+          sleep 5
+          gh workflow run whatsapp.yml -f command=pipeline
+        env:
+          GH_TOKEN: ${{ github.token }}

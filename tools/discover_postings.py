@@ -40,6 +40,7 @@ from send_whatsapp import main as send_whatsapp_main  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TRACKER_PATH = REPO_ROOT / "francisco-job-tracker-2026.html"
 STATE_PATH = REPO_ROOT / "state" / "market_history_seen.json"
+SYNCED_TRACKED_PATH = REPO_ROOT / "state" / "tracked_identities.json"
 LINKEDIN_CLI = REPO_ROOT / "tools" / "linkedin-search" / "cli" / "src" / "cli.ts"
 MARKET_HISTORY_PATTERN = re.compile(r"(const MARKET_HISTORY = )(\[.*?\])(;)", re.S)
 
@@ -333,6 +334,8 @@ def main() -> int:
     html, existing, match = read_market_history()
     existing_keys = {entry_key(e) for e in existing}
     tracked_keys = tracked_identity_keys(read_saved_data(html))
+    if SYNCED_TRACKED_PATH.exists():
+        tracked_keys |= set(json.loads(SYNCED_TRACKED_PATH.read_text(encoding="utf-8")))
 
     new_entries = []
     already_tracked_count = 0

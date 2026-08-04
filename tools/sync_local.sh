@@ -18,11 +18,11 @@ git pull --quiet origin main
 
 python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html"
 
-if ! git diff --quiet -- francisco-job-tracker-2026.html; then
-  git add francisco-job-tracker-2026.html
-  git commit -m "Sync MARKET_HISTORY from local tracker"
+if ! git diff --quiet -- francisco-job-tracker-2026.html state/tracked_identities.json 2>/dev/null; then
+  git add francisco-job-tracker-2026.html state/tracked_identities.json
+  git commit -m "Sync MARKET_HISTORY + tracked identities from local tracker"
   git push --quiet origin main
-  echo "Pushed MARKET_HISTORY update."
+  echo "Pushed update."
 else
   echo "No repo changes."
 fi

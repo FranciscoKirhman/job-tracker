@@ -3,7 +3,11 @@ name: WhatsApp tracker sync
 on:
   schedule:
     # ~08:00 Santiago time. Chile's UTC offset shifts with DST; adjust if needed.
-    - cron: "0 12 * * *"
+    # Offset 7 minutes past the hour on purpose: GitHub's own docs warn that
+    # schedules landing exactly on the hour (the most common cron pattern)
+    # are more likely to be delayed or dropped under load. See watchdog.yml,
+    # which catches and retries a miss like this either way.
+    - cron: "7 12 * * *"
   repository_dispatch:
     types: [whatsapp_command]
   workflow_dispatch:
