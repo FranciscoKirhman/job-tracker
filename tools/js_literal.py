@@ -55,7 +55,6 @@ def find_statement_bounds(content: str, var_name: str) -> tuple[int, int] | None
     return None
 
 
-_OBJECT_PATTERN = re.compile(r"\{([^{}]*)\}")
 _FIELD_PATTERN = re.compile(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*'((?:[^'\\]|\\.)*)'")
 
 
@@ -67,12 +66,44 @@ def _escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace("'", "\\'")
 
 
+def _iter_top_level_objects(text: str):
+    """Yield the inner text of each top-level `{...}` span in an array
+    literal, tracking string context (so a literal '{' or '}' inside a
+    field's own string value -- e.g. a job description that happens to
+    mention a brace -- doesn't get mistaken for object boundaries, which a
+    plain `\\{([^{}]*)\\}` regex would do)."""
+    depth = 0
+    obj_start = None
+    in_string: str | None = None
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if in_string:
+            if c == "\\":
+                i += 2
+                continue
+            if c == in_string:
+                in_string = None
+        elif c in ("'", '"'):
+            in_string = c
+        elif c == "{":
+            if depth == 0:
+                obj_start = i + 1
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0 and obj_start is not None:
+                yield text[obj_start:i]
+                obj_start = None
+        i += 1
+
+
 def parse_flat_array(text: str) -> list[dict[str, Any]]:
     """Parse a `[{k:'v',...}, ...]` literal (flat string values only)."""
     entries = []
-    for obj_match in _OBJECT_PATTERN.finditer(text):
+    for obj_body in _iter_top_level_objects(text):
         fields = {}
-        for field_match in _FIELD_PATTERN.finditer(obj_match.group(1)):
+        for field_match in _FIELD_PATTERN.finditer(obj_body):
             fields[field_match.group(1)] = _unescape(field_match.group(2))
         if fields:
             entries.append(fields)

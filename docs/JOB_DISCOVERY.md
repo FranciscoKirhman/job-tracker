@@ -34,10 +34,25 @@ violation, just an unpublished-but-public endpoint), and higher precision
 since you're querying one specific target company directly.
 
 **No public location facet** — results come back for every country the
-company hires in, so `fetch_workday()` filters client-side to entries whose
-`locationsText` contains "Chile" or "Remote". Confirmed by testing: without
-this filter, an Abbott query returned postings from Malaysia, Uzbekistan,
-Algeria, etc. alongside the 4 actually relevant to Chile.
+company hires in, so `fetch_workday()` filters client-side via
+`_is_chile_viable_location()`. Confirmed by testing: without this filter, an
+Abbott query returned postings from Malaysia, Uzbekistan, Algeria, etc.
+alongside the 4 actually relevant to Chile.
+
+A first version of this filter just checked for "Chile" or "Remote" in
+`locationsText`, but "Remote" alone isn't Chile-eligible — a lot of Workday
+postings are "`<Country>` - Remote" (remote *within* that country's borders,
+its own residency/work-authorization requirements). That let a Merck
+"USA - REMOTE - REMOTE" posting requiring US Southeast residency straight
+through, and since `compute_fit()` only looks at the title, it scored a
+perfect 10/10 and got auto-added as a HIGH-priority application. Fixed by
+flipping to an allowlist: a "remote" location only counts as Chile-viable if
+it names Chile/LATAM/global explicitly, or is a bare unqualified "Remote"
+with nothing else — anything naming another specific country is excluded.
+`_has_us_region_restriction()` catches the same failure mode when it's baked
+into the *title* instead (the Merck posting literally had "(Southeast)" in
+its title). Both checks also run on `fetch_linkedin()` results, not just
+Workday's.
 
 #### Finding a company's tenant + site ID
 
@@ -59,11 +74,10 @@ Algeria, etc. alongside the 4 actually relevant to Chile.
    companies — if `wd5` 404s outright (not an S21 error), try the others.
 4. Add the confirmed `{company, tenant, wd, site}` to `WORKDAY_SOURCES`.
 
-**Companies still worth discovering** (from the research that identified
-this approach): J&J and GSK are confirmed on Workday (tenant responds, just
-need the right site slug); Pfizer, Merck/MSD, AstraZeneca, and Sanofi were
-confirmed reachable via this pattern during initial research but not yet
-wired into `WORKDAY_SOURCES` — do that next.
+**Companies still worth discovering**: `WORKDAY_SOURCES` currently covers
+Abbott, Pfizer, Merck (MSD), AstraZeneca, and Sanofi. J&J and GSK are
+confirmed on Workday (tenant responds, just need the right site slug) but
+not yet wired in.
 
 ## Fit heuristic
 

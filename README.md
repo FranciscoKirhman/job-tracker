@@ -83,4 +83,4 @@ Set up: [docs/WHATSAPP_SETUP.md](docs/WHATSAPP_SETUP.md). Once configured, a sch
 
 ## Status
 
-This repo currently holds an independent copy of the tracker, kept in sync manually. The original working copy this was copied from lives locally outside this repo and is still the one being actively edited day-to-day, until the workflow above is validated end-to-end and this repo takes over as the single source of truth.
+The local working copy and this repo sync automatically: a macOS LaunchAgent runs `tools/sync_local.sh` every 30 minutes (see [docs/LOCAL_SYNC_SETUP.md](docs/LOCAL_SYNC_SETUP.md)) to merge discovered postings, discards, and tracked-application identities both ways, and WhatsApp two-way commands write status changes directly to this repo via GitHub Actions. `SAVED_DATA` (your applications and their status) is the one thing that's still local-authoritative rather than auto-synced, by design — see that doc for why.

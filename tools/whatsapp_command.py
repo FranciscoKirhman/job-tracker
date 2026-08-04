@@ -331,7 +331,14 @@ def resolve_source(tracker: Path, name: str, action: str) -> str:
     html = tracker.read_text(encoding="utf-8")
     failed = read_flat_array(html, "FAILED_SOURCES")
     key = normalize_key(name)
-    matches = [e for e in failed if key in normalize_key(e.get("source"))]
+    if not key:
+        return f"No hay fuente fallida que coincida con '{name}'."
+    # Same exact-match-first, minimum-length-for-fuzzy-fallback guard as
+    # find_company_matches() -- a short query silently matching the wrong
+    # source isn't caught by the "multiple matches" check below.
+    matches = [e for e in failed if normalize_key(e.get("source")) == key]
+    if not matches and len(key) >= MIN_FUZZY_MATCH_LEN:
+        matches = [e for e in failed if key in normalize_key(e.get("source"))]
 
     if not matches:
         return f"No hay fuente fallida que coincida con '{name}'."
@@ -360,10 +367,25 @@ def resolve_source(tracker: Path, name: str, action: str) -> str:
     return f"Marcada '{entry.get('source')}' como {'actualizada' if action == 'updated' else 'sin cambios'}."
 
 
+MIN_FUZZY_MATCH_LEN = 3
+
+
 def find_company_matches(jobs: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
     key = normalize_key(query)
     if not key:
         raise CommandError("Empty company name.")
+    # Prefer an exact match over substring matching -- a short/generic
+    # query (a typo, an abbreviation) can be a substring of the WRONG
+    # company's name and match nothing else, which the "multiple matches"
+    # ambiguity check can't catch since it's a single silent wrong match,
+    # not an ambiguous one. An exact normalized match is unambiguous by
+    # construction. Only fall back to substring matching for queries long
+    # enough that an accidental match is unlikely.
+    exact = [job for job in jobs if normalize_key(job.get("company", "")) == key]
+    if exact:
+        return exact
+    if len(key) < MIN_FUZZY_MATCH_LEN:
+        return []
     matches = [job for job in jobs if key in normalize_key(job.get("company", ""))]
     return matches
 
@@ -399,14 +421,19 @@ def apply_status_update(
         record["rejectedDate"] = when
     elif status == "interview":
         interviews = record.setdefault("interviews", [])
-        interviews.append(
-            {
-                "round": len(interviews) + 1,
-                "date": when,
-                "type": "",
-                "notes": "Updated via WhatsApp",
-            }
-        )
+        # Not idempotent otherwise: a retried/duplicate-delivered WhatsApp
+        # webhook, or Francisco resending the same command, would append a
+        # second identical round every time. One round per date is a
+        # reasonable proxy for "this is the same update happening twice".
+        if not any(iv.get("date") == when for iv in interviews):
+            interviews.append(
+                {
+                    "round": len(interviews) + 1,
+                    "date": when,
+                    "type": "",
+                    "notes": "Updated via WhatsApp",
+                }
+            )
         record["interviewDate"] = when
 
     if backup_dir is not None:

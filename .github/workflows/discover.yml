@@ -4,7 +4,12 @@ on:
   schedule:
     # Every 4 hours. Deliberately not more frequent -- keep query volume low
     # per the linkedin-search skill's own ToS caution (see tools/linkedin-search/SKILL.md).
-    - cron: "0 */4 * * *"
+    # Offset 13 minutes past the hour, same reasoning as whatsapp.yml: GitHub's
+    # own docs warn that schedules landing exactly on the hour are more likely
+    # to be delayed or dropped. No separate watchdog here (unlike whatsapp.yml)
+    # -- this runs 6x/day, so a single missed run is caught by the next one a
+    # few hours later, not worth a dedicated retry workflow.
+    - cron: "13 */4 * * *"
   workflow_dispatch: {}
 
 permissions:
