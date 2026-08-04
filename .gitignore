@@ -1,6 +1,8 @@
 backups/*
 !backups/.gitkeep
 
+state/*.log
+
 __pycache__/
 *.pyc
 .venv/
