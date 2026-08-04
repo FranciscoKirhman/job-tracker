@@ -224,6 +224,49 @@ def read_market_history() -> tuple[str, list[dict[str, Any]], re.Match[str]]:
     return html, json.loads(match.group(2)), match
 
 
+def read_saved_data(html: str) -> list[dict[str, Any]]:
+    match = re.search(
+        r"// TRACKER_DATA_START\s*\nconst SAVED_DATA\s*=\s*(\[[\s\S]*?\])\s*;\s*\n// TRACKER_DATA_END",
+        html,
+    )
+    if not match:
+        return []
+    return json.loads(match.group(1))
+
+
+def tracked_identity_keys(saved_data: list[dict[str, Any]]) -> set[str]:
+    """Normalized company+role keys for every application already in
+    SAVED_DATA, regardless of status -- a posting we've already applied to,
+    interviewed for, or been rejected from is not a "new" discovery, no
+    matter what LinkedIn/Workday call it."""
+    keys = set()
+    for record in saved_data:
+        company = normalize_key(record.get("company"))
+        role = normalize_key(record.get("role"))
+        if company and role:
+            keys.add(f"{company}|{role}")
+        job_id = normalize_key(record.get("jobId"))
+        if job_id and re.search(r"\d", job_id):
+            keys.add(f"jobid|{job_id}")
+    return keys
+
+
+def already_tracked(entry: dict[str, Any], tracked_keys: set[str]) -> bool:
+    company = normalize_key(entry.get("company"))
+    role = normalize_key(entry.get("title"))
+    if company and role and f"{company}|{role}" in tracked_keys:
+        return True
+    # Discovered jobId is prefixed ("li-4441683250", "wd-abbott-31157043-1");
+    # match if the tracked numeric/alnum core ID appears as a substring.
+    raw_id = normalize_key(entry.get("jobId"))
+    for key in tracked_keys:
+        if key.startswith("jobid|"):
+            tracked_id = key[len("jobid|"):]
+            if tracked_id and tracked_id in raw_id:
+                return True
+    return False
+
+
 def write_market_history(html: str, match: re.Match[str], entries: list[dict[str, Any]]) -> None:
     serialized = json.dumps(entries, ensure_ascii=False, indent=2)
     new_html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
@@ -240,15 +283,23 @@ def main() -> int:
 
     html, existing, match = read_market_history()
     existing_keys = {entry_key(e) for e in existing}
+    tracked_keys = tracked_identity_keys(read_saved_data(html))
 
     new_entries = []
+    already_tracked_count = 0
     seen_this_run = set()
     for entry in found:
         key = entry_key(entry)
         if key in existing_keys or key in seen_this_run:
             continue
+        if already_tracked(entry, tracked_keys):
+            already_tracked_count += 1
+            continue
         seen_this_run.add(key)
         new_entries.append(entry)
+
+    if already_tracked_count:
+        print(f"Skipped {already_tracked_count} posting(s) already in SAVED_DATA (applied/rejected/interview/etc).")
 
     if not new_entries:
         print("No new postings found.")
