@@ -70,7 +70,7 @@ Meta will call the Worker once to verify (a GET request); it should show as veri
 
 Send these as plain WhatsApp messages to your own configured number:
 
-- `pipeline` — get a status digest (counts per stage, upcoming deadlines).
+- `pipeline` — status digest: stage counts, a "Qué hacer hoy" action summary, upcoming deadlines, new postings from `MARKET_HISTORY` ranked by fit (verified vs. unverified shown separately), and a failed-sources summary.
 - `update: <company> | <status> | <YYYY-MM-DD>` — update an existing application's status. The date is optional (defaults to today). Status must be one of: `todo`, `applied`, `interview`, `offer`, `rejected`, `withdrawn`.
 
   Examples:
@@ -80,6 +80,9 @@ Send these as plain WhatsApp messages to your own configured number:
   ```
 
   If the company name matches more than one tracked application, you'll get a reply listing the ambiguous ones so you can be more specific (e.g. include part of the role too).
+
+- `sources` — list every `FAILED_SOURCES` entry in full, with its manual-fix note.
+- `sources: <name> | ok` or `sources: <name> | updated` — resolve one (fuzzy match on the source name), removing it from `FAILED_SOURCES` and logging it to `REVIEWED_SOURCES`. Use `ok` when there's nothing to fix, `updated` when you've fixed it.
 
 This only updates *existing* records. Adding a brand-new application still goes through `tools/update_job_tracker.py` with a full structured posting file, since a one-line WhatsApp message doesn't carry enough information (job description, requirements, etc.) to create a proper record.
 
