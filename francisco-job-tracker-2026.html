@@ -701,7 +701,6 @@ body::before{background:radial-gradient(circle at 85% -10%,rgba(10,132,255,.16),
     <div class="nav nav-primary">
       <button id="nav-dash" onclick="goPage('dash')" class="on">Inicio</button>
       <button id="nav-new" onclick="goPage('new')">Nuevas<span class="cnt" id="newNavCnt">15</span></button>
-      <button id="nav-shortlist" onclick="goPage('shortlist')">Shortlist<span class="cnt" id="shortlistNavCnt">0</span></button>
       <button id="nav-apps" onclick="goPage('apps')" aria-label="Postulaciones">Procesos<span class="cnt" id="navCnt" title="21 active · 12 rejected separated">21</span></button>
       <button id="nav-calendar" onclick="goPage('calendar')" aria-label="Calendario">Agenda<span class="cnt" id="calendarNavCnt">3</span></button>
     </div>
@@ -2111,7 +2110,7 @@ Inicio estimado: 06 de julio de 2026</div></div></div></td></tr><tr class="co-hd
         <div class="hero-metric"><b>0</b><span>postulaciones automáticas</span></div>
       </div>
     </section>
-    <div class="decision-method"><b>Puntaje de decisión, 0 a 100:</b> fit 35 puntos, urgencia 15, ausencia o presencia de pared 20, valor profesional para las rutas objetivo 15 y probabilidad orientativa de entrevista 15. La probabilidad usa conversión histórica suavizada por empresa y ruta, más el fit. No es una predicción estadística ni reemplaza la lectura de la vacante.</div>
+    <details class="weekly-report-details"><summary>Cómo se calcula el puntaje de decisión</summary><div class="decision-method"><b>Puntaje de decisión, 0 a 100:</b> fit 35 puntos, urgencia 15, ausencia o presencia de pared 20, valor profesional para las rutas objetivo 15 y probabilidad orientativa de entrevista 15. La probabilidad usa conversión histórica suavizada por empresa y ruta, más el fit. No es una predicción estadística ni reemplaza la lectura de la vacante.</div></details>
     <div class="section-head"><div><h3>Nuevas por empresa</h3><p>Empresas y cargos ordenados desde la detección más reciente hasta la más antigua. En empates, las empresas se ordenan alfabéticamente.</p></div></div>
     <div id="highFitAlert"><div class="high-fit-alert none"><b>Sin alerta de fit alto:</b> ninguna de las quince vacantes nuevas alcanza 8 de 10. Los mejores ajustes siguen visibles y conservan su riesgo exacto.</div></div>
     <section class="weekly-fit-box"><div class="weekly-fit-head"><div><h3>Vista rápida de la última semana</h3><p>Vacantes detectadas en los últimos siete días con fit 6 o superior, ordenadas primero por fit y luego por fecha.</p></div><span class="fit-score fit-good" id="weeklyFitCount">2 vacantes</span></div><div class="weekly-fit-list" id="weeklyFitList"><article class="weekly-fit-item"><div><b>Boston Scientific · Regulatory Affairs Support, Chile</b><span>2026-08-02 11:30 · </span></div><div><span class="fit-score fit-good">Fit 6.6</span><span class="decision-score decision-score-good">Decisión 59</span><button class="home-go" style="margin-top:5px" onclick="focusNewJob(&quot;Boston Scientific|563602813318017&quot;)">Ver</button></div></article><article class="weekly-fit-item"><div><b>Abbott · Supervisor de Investigaciones de Laboratorio y Troubleshooting</b><span>2026-08-02 11:30 · </span></div><div><span class="fit-score fit-stretch">Fit 6.4</span><span class="decision-score decision-score-review">Decisión 52</span><button class="home-go" style="margin-top:5px" onclick="focusNewJob(&quot;Abbott|31157276&quot;)">Ver</button></div></article></div></section>
@@ -6708,6 +6707,9 @@ const MARKET_HISTORY = [
     "details": "Found via automated Workday search for 'Medical Science Liaison'."
   }
 ];
+// DISCARDED_START
+const DISCARDED_POSTINGS = [];
+// DISCARDED_END
 const MAIL_AUDIT = {"checkedAt":"2026-08-02 20:20 America/Santiago","window":"Desde 2026-08-01 18:00 America/Santiago","newRelevant":0,"relevantTotal":3,"confirmed":1,"action":2};
 const MAIL_SIGNALS = [{"id": "19fb8d4f656a8684", "received": "2026-07-31 11:39 America/Santiago", "company": "Biogen", "role": "MSL Neuropsychiatry Chile", "jobId": "REQ23791", "kind": "confirmed", "label": "Envío confirmado", "subject": "Thank you for applying to Biogen", "sender": "Biogen Talent Acquisition", "summary": "", "tracker": "", "action": "", "url": "https://mail.google.com/mail/#all/19fb8d4f656a8684"}, {"id": "19fb87d3a20553e9", "received": "2026-07-31 10:04 America/Santiago", "company": "Abbott", "role": "Medical Scientific Liaison", "jobId": "31155935", "kind": "info", "label": "Acceso temporal", "subject": "Open Now: Finish your job application with Abbott", "sender": "Abbott Talent Acquisition", "summary": "", "tracker": "", "action": "", "url": "https://mail.google.com/mail/#all/19fb87d3a20553e9"}, {"id": "19fb847462e82908", "received": "2026-07-31 09:05 America/Santiago", "company": "Abbott", "role": "Medical Scientific Liaison Aesthetics", "jobId": "Sin ID estable en tracker", "kind": "action", "label": "Proceso incompleto", "subject": "Complete your application with Abbott", "sender": "Abbott Talent Acquisition", "summary": "", "tracker": "", "action": "", "url": "https://mail.google.com/mail/#all/19fb847462e82908"}];
 const NEW_JOB_RECOMMENDATIONS = [
@@ -6931,8 +6933,8 @@ function initJobs3Chat(){loadJobs3ChatHistory();const preference=document.getEle
 
 // NAV
 function goPage(p){
-  const pages=['dash','apps','history','companies','new','interest','shortlist','calendar','sources','mail','ai'];
-  const labels={dash:'Inicio',apps:'Postulaciones',history:'Historial',companies:'Empresas',new:'Nuevas oportunidades',interest:'Para ti',shortlist:'Shortlist personal',calendar:'Calendario',sources:'Fuentes',mail:'Correos laborales',ai:'Contexto IA'};
+  const pages=['dash','apps','history','companies','new','interest','calendar','sources','mail','ai'];
+  const labels={dash:'Inicio',apps:'Postulaciones',history:'Historial',companies:'Empresas',new:'Nuevas oportunidades',interest:'Para ti',calendar:'Calendario',sources:'Fuentes',mail:'Correos laborales',ai:'Contexto IA'};
   const secondary=['history','companies','interest','sources','mail','ai'];
   if(!pages.includes(p))p='apps';
   pages.forEach(k=>{
@@ -7089,6 +7091,20 @@ function toggleCompare(key){
   renderComparator();renderNewJobs();renderInterest();
 }
 function clearComparison(){COMPARE_SELECTED.clear();renderComparator();renderNewJobs();renderInterest();toast('Comparador limpio.');}
+function discardedNewKeys(){return new Set(DISCARDED_POSTINGS.map(d=>companyRoleKeyLoose(d.company,d.role)));}
+function companyRoleKeyLoose(company,role){return normKey(company)+'|'+normKey(role);}
+function discardNewJob(key){
+  if(!confirm('¿Marcar que no vas a postular a esto? No se volverá a mostrar aquí ni en las alertas automáticas.'))return;
+  const j=findOpportunity(key);
+  if(j){DISCARDED_POSTINGS.push({company:j.company,role:j.role,jobId:j.jobId||'',discardedAt:new Date().toISOString()});}
+  if(COMPARE_SELECTED.has(key))COMPARE_SELECTED.delete(key);
+  renderNewJobs();renderComparator();toast('No se mostrará más. Recuerda hacer clic en Guardar para que la automatización también lo respete.');
+}
+function isAlreadyApplied(j){
+  const company=normKey(j.company),role=normKey(j.role);
+  if(!company||!role)return false;
+  return S.jobs.some(x=>normKey(x.company)===company&&normKey(x.role)===role);
+}
 function renderComparator(){
   const grid=document.getElementById('compareGrid');if(!grid)return;
   const jobs=[...COMPARE_SELECTED].map(findOpportunity).filter(Boolean);
@@ -7335,7 +7351,7 @@ function renderNewJobs(){
   const alert=document.getElementById('highFitAlert');
   alert.innerHTML=high.length?`<div class="high-fit-alert"><b>Alerta de fit alto:</b> ${high.length} vacante${high.length===1?'':'s'} nueva${high.length===1?'':'s'} con puntaje 8 o superior. ${esc(high.map(x=>`${x.company}: ${x.role}`).join(' · '))}</div>`:'<div class="high-fit-alert none"><b>Sin alerta de fit alto:</b> ninguna de las quince vacantes nuevas alcanza 8 de 10. Los mejores ajustes siguen visibles y conservan su riesgo exacto.</div>';
   const defaultFirstSeen='2026-08-02 11:30 America/Santiago';
-  const allJobs=NEW_JOB_RECOMMENDATIONS.map(j=>({...j,firstSeen:j.firstSeen||defaultFirstSeen,origin:'Nuevas'}));
+  const discardedNewKeySet=discardedNewKeys();const allJobs=NEW_JOB_RECOMMENDATIONS.map(j=>({...j,firstSeen:j.firstSeen||defaultFirstSeen,origin:'Nuevas'})).filter(j=>!isAlreadyApplied(j)&&!discardedNewKeySet.has(companyRoleKeyLoose(j.company,j.role)));
   const companiesAll=[...new Set(allJobs.map(x=>x.company))].sort((a,b)=>a.localeCompare(b,'es')),lanesAll=[...new Set(allJobs.map(jobLane))].sort((a,b)=>a.localeCompare(b,'es'));
   const companySelect=document.getElementById('newCompany'),laneSelect=document.getElementById('newLane');
   if(companySelect){const current=NEW_FILTERS.company;companySelect.innerHTML='<option value="">Todas las empresas</option>'+companiesAll.map(x=>`<option value="${esc(x)}"${x===current?' selected':''}>${esc(x)}</option>`).join('');}
@@ -7365,7 +7381,7 @@ function renderNewJobs(){
   });
   const jobCard=j=>{const key=opportunityKey(j),keyArg=JSON.stringify(key).replace(/</g,'\\u003c'),selected=COMPARE_SELECTED.has(key);return `<details class="collapse-card ${fitBorderClass(j.fit)}" id="newjob-${normKey(key)}">
     <summary><div class="collapse-title"><strong>${esc(j.role)}</strong><span>Primera detección ${esc(compactStamp(j.firstSeen))} · ID ${esc(j.jobId)} · ${esc(j.location)}</span></div><span class="fit-score ${fitClass(j.fit)}">Fit ${esc(Number(j.fit).toFixed(1))}</span>${decisionScoreBadge(j)}<span class="decision-pill decision-no">${esc(j.decision)}</span></summary>
-    <div class="collapse-body"><p><b>Empresa:</b> ${esc(j.company)}</p><p><b>Ruta:</b> ${esc(jobLane(j))}</p>${decisionBreakdownHtml(j)}<p><b>Puntaje de fit:</b> ${esc(fitLabel(j.fit))}</p><p><b>Primera detección:</b> ${esc(j.firstSeen)}</p><p><b>Cierre:</b> ${esc(j.closing)}</p><p><b>Razón a favor:</b> ${esc(j.reason)}</p><p><b>Evidencia del Master CV:</b> ${esc(cvEvidenceFor(j))}</p><p><b>Pared o riesgo:</b> ${esc(j.risk)}</p>${safeHref(j.url)?`<p><a class="history-link" href="${esc(j.url)}" target="_blank" rel="noreferrer">Abrir vacante oficial</a></p>`:''}${shortlistButtonHtml(j)} <button class="compare-toggle ${selected?'on':''}" onclick='toggleCompare(${keyArg})'>${selected?'Quitar del comparador':'Añadir al comparador'}</button></div>
+    <div class="collapse-body"><p><b>Empresa:</b> ${esc(j.company)}</p><p><b>Ruta:</b> ${esc(jobLane(j))}</p>${decisionBreakdownHtml(j)}<p><b>Puntaje de fit:</b> ${esc(fitLabel(j.fit))}</p><p><b>Primera detección:</b> ${esc(j.firstSeen)}</p><p><b>Cierre:</b> ${esc(j.closing)}</p><p><b>Razón a favor:</b> ${esc(j.reason)}</p><p><b>Evidencia del Master CV:</b> ${esc(cvEvidenceFor(j))}</p><p><b>Pared o riesgo:</b> ${esc(j.risk)}</p>${safeHref(j.url)?`<p><a class="history-link" href="${esc(j.url)}" target="_blank" rel="noreferrer">Abrir vacante oficial</a></p>`:''}${shortlistButtonHtml(j)} <button class="compare-toggle ${selected?'on':''}" onclick='toggleCompare(${keyArg})'>${selected?'Quitar del comparador':'Añadir al comparador'}</button> <button class="compare-toggle" style="border-color:rgba(248,113,113,.3);color:#ffabab" onclick='discardNewJob(${keyArg})'>No postularé</button></div>
   </details>`;};
   list.innerHTML=companies.length?companies.map(([company,items])=>`<details class="collapse-card new-company-group" id="newco-${normKey(company)}">
     <summary><div class="collapse-title"><strong>${esc(company)}</strong><span>${items.length} vacante${items.length===1?'':'s'} · mejor fit ${Math.max(...items.map(x=>+x.fit)).toFixed(1)} · decisión ${Math.max(...items.map(x=>decisionScoreMeta(x).score))}</span></div><span class="source-badge src-linkedin">${items.length}</span></summary>
@@ -7874,14 +7890,26 @@ function sanitizeClone(root){
   const toastEl=root.querySelector('#toast');if(toastEl)toastEl.classList.remove('show');
 }
 function generateHTML(){
+  // Marker text is built by concatenating fragments (not one contiguous
+  // literal) on purpose: this function's own source ends up inside the
+  // outerHTML it captures, so spelling the full start/end marker pair out
+  // together here (even in a comment) would match the marker regex below
+  // as a spurious second "block" -- keep any mention of it split up.
+  const TDS='// TRACKER'+'_DATA_START', TDE='// TRACKER'+'_DATA_END';
+  const DDS='// DISCARD'+'ED_START', DDE='// DISCARD'+'ED_END';
   const json=JSON.stringify(S.jobs,null,2).replace(/</g,'\\u003c');
+  const discardedJson=JSON.stringify(DISCARDED_POSTINGS,null,2).replace(/</g,'\\u003c');
   const clone=document.documentElement.cloneNode(true);
   sanitizeClone(clone);
   let src=clone.outerHTML;
   const marker=/\/\/ TRACKER_DATA_START[\s\S]*?\/\/ TRACKER_DATA_END/g;
   const matches=src.match(marker)||[];
   if(matches.length!==1)throw new Error(`Expected one tracker data block, found ${matches.length}`);
-  src=src.replace(marker,`// TRACKER_DATA_START\nconst SAVED_DATA = ${json};\n// TRACKER_DATA_END`);
+  src=src.replace(marker,TDS+'\nconst SAVED_DATA = '+json+';\n'+TDE);
+  const discardedMarker=/\/\/ DISCARDED_START[\s\S]*?\/\/ DISCARDED_END/g;
+  if((src.match(discardedMarker)||[]).length===1){
+    src=src.replace(discardedMarker,DDS+'\nconst DISCARDED_POSTINGS = '+discardedJson+';\n'+DDE);
+  }
   return'<!DOCTYPE html>\n'+src;
 }
 async function saveFile(){const html=generateHTML();const blob=new Blob([html],{type:'text/html'});if('showSaveFilePicker' in window){try{const fh=await window.showSaveFilePicker({suggestedName:'francisco-job-tracker-2026.html',types:[{description:'HTML',accept:{'text/html':['.html']}}]});const w=await fh.createWritable();await w.write(blob);await w.close();toast('✅ Saved!');return;}catch(e){if(e.name==='AbortError')return;}}dlBlob(blob,'francisco-job-tracker-2026.html');toast('✅ Downloaded!');}

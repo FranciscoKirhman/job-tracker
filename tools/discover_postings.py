@@ -239,13 +239,23 @@ def read_saved_data(html: str) -> list[dict[str, Any]]:
     return json.loads(match.group(1))
 
 
-def tracked_identity_keys(saved_data: list[dict[str, Any]]) -> set[str]:
-    """Normalized company+role keys for every application already in
-    SAVED_DATA, regardless of status -- a posting we've already applied to,
-    interviewed for, or been rejected from is not a "new" discovery, no
-    matter what LinkedIn/Workday call it."""
+def read_discarded_postings(html: str) -> list[dict[str, Any]]:
+    match = re.search(
+        r"// DISCARDED_START\s*\nconst DISCARDED_POSTINGS\s*=\s*(\[[\s\S]*?\])\s*;\s*\n// DISCARDED_END",
+        html,
+    )
+    if not match:
+        return []
+    return json.loads(match.group(1))
+
+
+def identity_keys_from_records(records: list[dict[str, Any]]) -> set[str]:
+    """Normalized company+role (+ jobId) keys, shared logic for both
+    SAVED_DATA (real applications) and DISCARDED_POSTINGS (things Francisco
+    said he won't apply to) -- either way, not a "new" discovery worth
+    surfacing again."""
     keys = set()
-    for record in saved_data:
+    for record in records:
         company = normalize_key(record.get("company"))
         role = normalize_key(record.get("role"))
         if company and role:
@@ -254,6 +264,14 @@ def tracked_identity_keys(saved_data: list[dict[str, Any]]) -> set[str]:
         if job_id and re.search(r"\d", job_id):
             keys.add(f"jobid|{job_id}")
     return keys
+
+
+def tracked_identity_keys(saved_data: list[dict[str, Any]]) -> set[str]:
+    """Normalized company+role keys for every application already in
+    SAVED_DATA, regardless of status -- a posting we've already applied to,
+    interviewed for, or been rejected from is not a "new" discovery, no
+    matter what LinkedIn/Workday call it."""
+    return identity_keys_from_records(saved_data)
 
 
 def already_tracked(entry: dict[str, Any], tracked_keys: set[str]) -> bool:
@@ -334,6 +352,7 @@ def main() -> int:
     html, existing, match = read_market_history()
     existing_keys = {entry_key(e) for e in existing}
     tracked_keys = tracked_identity_keys(read_saved_data(html))
+    tracked_keys |= identity_keys_from_records(read_discarded_postings(html))
     if SYNCED_TRACKED_PATH.exists():
         tracked_keys |= set(json.loads(SYNCED_TRACKED_PATH.read_text(encoding="utf-8")))
 

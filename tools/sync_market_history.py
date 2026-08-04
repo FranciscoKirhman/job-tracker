@@ -27,6 +27,9 @@ from typing import Any
 
 
 MARKET_HISTORY_PATTERN = re.compile(r"(const MARKET_HISTORY = )(\[.*?\])(;)", re.S)
+DISCARDED_PATTERN = re.compile(
+    r"(// DISCARDED_START\s*\nconst DISCARDED_POSTINGS\s*=\s*)(\[[\s\S]*?\])(\s*;\s*\n// DISCARDED_END)"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -81,6 +84,43 @@ def merge(local_entries: list[dict], repo_entries: list[dict]) -> list[dict]:
         if str(entry.get("lastConfirmed", "")) > str(existing.get("lastConfirmed", "")):
             by_key[key] = entry
     return [by_key[key] for key in by_key]
+
+
+def discarded_key(entry: dict[str, Any]) -> str:
+    return f"{normalize_key(entry.get('company'))}|{normalize_key(entry.get('role'))}"
+
+
+def read_discarded(path: Path) -> tuple[str, list[dict[str, Any]], re.Match[str] | None]:
+    html = path.read_text(encoding="utf-8")
+    match = DISCARDED_PATTERN.search(html)
+    if not match:
+        return html, [], None
+    try:
+        entries = json.loads(match.group(2))
+    except json.JSONDecodeError:
+        entries = []
+    return html, entries, match
+
+
+def merge_discarded(local_entries: list[dict], repo_entries: list[dict]) -> list[dict]:
+    by_key: dict[str, dict[str, Any]] = {}
+    for entry in repo_entries + local_entries:
+        key = discarded_key(entry)
+        existing = by_key.get(key)
+        if existing is None or str(entry.get("discardedAt", "")) > str(existing.get("discardedAt", "")):
+            by_key[key] = entry
+    return [by_key[key] for key in by_key]
+
+
+def write_discarded_if_changed(
+    path: Path, html: str, match: re.Match[str], merged: list[dict], existing: list[dict]
+) -> bool:
+    if {discarded_key(e) for e in existing} == {discarded_key(e) for e in merged}:
+        return False
+    serialized = json.dumps(merged, ensure_ascii=False, indent=2)
+    new_html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
+    path.write_text(new_html, encoding="utf-8")
+    return True
 
 
 def write_if_changed(
@@ -169,6 +209,18 @@ def main() -> int:
     if identities_changed:
         print(f"Synced tracked identities: +{new_identity_count} new (now watching for these to stay hidden from discovery/digest).")
         repo_changed = True
+
+    # DISCARDED_POSTINGS is a newer block -- older local copies may not have
+    # it yet, so this is best-effort, not a hard requirement like MARKET_HISTORY.
+    local_d_html, local_d_entries, local_d_match = read_discarded(args.local)
+    repo_d_html, repo_d_entries, repo_d_match = read_discarded(args.repo)
+    if local_d_match is not None and repo_d_match is not None:
+        merged_d = merge_discarded(local_d_entries, repo_d_entries)
+        d_local_changed = write_discarded_if_changed(args.local, local_d_html, local_d_match, merged_d, local_d_entries)
+        d_repo_changed = write_discarded_if_changed(args.repo, repo_d_html, repo_d_match, merged_d, repo_d_entries)
+        if d_local_changed or d_repo_changed:
+            print(f"Synced discarded postings: {len(merged_d)} total.")
+            repo_changed = repo_changed or d_repo_changed
 
     print(f"REPO_CHANGED={'1' if repo_changed else '0'}")
     return 0

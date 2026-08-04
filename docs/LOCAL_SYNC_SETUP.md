@@ -1,19 +1,31 @@
 # Local ↔ repo sync
 
-Keeps `MARKET_HISTORY` (discovered job postings) in sync between your local
-working file (`~/Documents/francisco-job-tracker-2026.html`) and this repo,
-in both directions — automatically, every 30 minutes.
+Keeps three things in sync between your local working file
+(`~/Documents/francisco-job-tracker-2026.html`) and this repo, automatically,
+every 30 minutes:
 
-## Why only `MARKET_HISTORY`
+- `MARKET_HISTORY` (discovered job postings) — merged both directions.
+- `DISCARDED_POSTINGS` (things you clicked "No postularé" on in the app's
+  Nuevas page) — merged both directions, so a discard made locally reaches
+  the cloud discovery pipeline and stops it from re-alerting on the same
+  posting, and vice versa.
+- `state/tracked_identities.json` — a one-way, read-only export of your
+  local `SAVED_DATA`'s company+role identity keys (never the data itself),
+  so the cloud side recognizes "already applied to this" even when the
+  status update only ever happened on this machine.
 
-`SAVED_DATA` (your tracked applications and their status) is **not** touched
-by this sync. WhatsApp two-way commands (`update: <company> | <status>`)
-write directly to the repo's `SAVED_DATA`, and a blind local↔repo merge of
-that field could overwrite those changes with stale local data. `MARKET_HISTORY`
-is just discovered-posting metadata (company, title, url, timestamps) with
-no such conflict, so merging it both ways is safe — entries are matched by
-company + job ID (or company + title + url as a fallback), and duplicates
-are automatically deduplicated.
+## Why not `SAVED_DATA` itself
+
+`SAVED_DATA` (your tracked applications and their status) is **not** synced
+directly. WhatsApp two-way commands (`update: <company> | <status>`) write
+directly to the repo's `SAVED_DATA`, and a blind local↔repo merge of that
+field could overwrite those changes with stale local data. `MARKET_HISTORY`
+and `DISCARDED_POSTINGS` are metadata with no such conflict, so merging them
+both ways is safe — entries are matched by company + job ID (or company +
+title/role as a fallback), and duplicates are automatically deduplicated.
+For "already applied" recognition without the clobber risk, only a derived,
+additive-only set of identity keys is exported (`tracked_identities.json`),
+never the actual application records.
 
 ## How it runs
 

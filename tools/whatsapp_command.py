@@ -61,6 +61,8 @@ from tracker_context import build_context  # noqa: E402
 from discover_postings import (  # noqa: E402
     already_tracked,
     compute_fit,
+    identity_keys_from_records,
+    read_discarded_postings,
     tracked_identity_keys,
 )
 from js_literal import read_flat_array, write_flat_array  # noqa: E402
@@ -76,12 +78,14 @@ MAX_LISTED = 8
 
 
 def all_tracked_keys(tracker: Path) -> set[str]:
-    """Union of identity keys from this repo's own SAVED_DATA plus whatever
-    the local machine last synced over (state/tracked_identities.json) --
-    covers applications Francisco updated locally that haven't otherwise
-    reached the repo (SAVED_DATA itself is deliberately not synced
-    bidirectionally, see docs/LOCAL_SYNC_SETUP.md)."""
+    """Union of identity keys from this repo's own SAVED_DATA and
+    DISCARDED_POSTINGS, plus whatever the local machine last synced over
+    (state/tracked_identities.json) -- covers applications (or discards)
+    Francisco made locally that haven't otherwise reached the repo
+    (SAVED_DATA itself is deliberately not synced bidirectionally, see
+    docs/LOCAL_SYNC_SETUP.md)."""
     keys = tracked_identity_keys(read_tracker(tracker)[1])
+    keys |= identity_keys_from_records(read_discarded_postings(tracker.read_text(encoding="utf-8")))
     if SYNCED_TRACKED_PATH.exists():
         keys |= set(json.loads(SYNCED_TRACKED_PATH.read_text(encoding="utf-8")))
     return keys
