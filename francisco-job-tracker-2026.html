@@ -7882,9 +7882,9 @@ function renderHome(){
   const sourcePct=sourceTotal?Math.round(FAILED_SOURCES.length/sourceTotal*100):0;
   const sourceInputs=loadSourceReviewInputs();
   const sourcePending=FAILED_SOURCES.filter(x=>!sourceInputs[x.source]).length;
-  const highFitNew=NEW_JOB_RECOMMENDATIONS.filter(x=>+x.fit>=8);
-  const highFitAdjacent=ADJACENT_OPPORTUNITIES.filter(x=>+x.fit>=8);
-  const topDecisions=allComparableOpportunities().filter(x=>!isAlreadyApplied(x)).sort((a,b)=>decisionScoreMeta(b).score-decisionScoreMeta(a).score||Number(b.fit)-Number(a.fit)).slice(0,3);
+  const newPool=newJobsPool();
+  const highFitNew=newPool.filter(x=>+x.fit>=8);
+  const topDecisions=[...newPool].sort((a,b)=>decisionScoreMeta(b).score-decisionScoreMeta(a).score||Number(b.fit)-Number(a.fit)).slice(0,3);
   const feedChannels=JOBS3_AUTOMATION_FEED&&JOBS3_AUTOMATION_FEED.channels||{};
   const feedActions=Object.values(feedChannels).flatMap(channel=>normalizedFeedItems(channel&&channel.actions));
   const feedAlerts=Object.values(feedChannels).flatMap(channel=>normalizedFeedItems(channel&&channel.alerts));
@@ -7892,7 +7892,7 @@ function renderHome(){
   const cards=[
     {value:active,label:'procesos activos',note:'Postulada, entrevista u oferta',spark:activeVals,sparkColor:'var(--blue)',trend:trendChip(activeVals)},
     {value:m.interview,label:'en entrevista',note:'estado canónico actual',spark:ivVals,sparkColor:'var(--cyan)',trend:trendChip(ivVals)},
-    {value:NEW_JOB_RECOMMENDATIONS.length,label:'vacantes nuevas',note:`${highFitNew.length} con fit alto`},
+    {value:newPool.length,label:'vacantes nuevas',note:`${highFitNew.length} con fit alto`},
     {value:FAILED_SOURCES.length,label:'fuentes fallidas',note:`${sourcePending} alertas manuales pendientes`},
     {value:MAIL_AUDIT.newRelevant,label:'correos nuevos',note:'laborales y relevantes'},
     {value:deadlines.length,label:'cierres en 72 horas',note:'solo fechas confirmadas'}
@@ -7906,13 +7906,11 @@ function renderHome(){
   feedActions.slice(0,3).forEach(action=>priorities.push({kind:'',title:'Acción detectada por automatización',note:action,page:'dash',cta:'Ver feed'}));
   if(deadlines.length)priorities.push({kind:'urgent',title:`${deadlines.length} cierre${deadlines.length===1?'':'s'} dentro de 72 horas`,note:deadlines.slice(0,2).map(x=>`${x.j.company}: ${x.j.role}`).join(' · '),page:'apps',cta:'Ver cierres'});
   if(upcoming.length)priorities.push({kind:'urgent',title:`${upcoming.length} entrevista${upcoming.length===1?'':'s'} próxima${upcoming.length===1?'':'s'}`,note:upcoming.slice(0,2).map(x=>`${x.j.company}: ${compactStamp(x.iv.date)}`).join(' · '),page:'apps',cta:'Preparar'});
-  if(highFitNew.length)priorities.push({kind:'urgent',title:`${highFitNew.length} vacante${highFitNew.length===1?'':'s'} nueva${highFitNew.length===1?'':'s'} con fit alto`,note:highFitNew.slice(0,2).map(x=>`${x.company}: ${x.role} · ${Number(x.fit).toFixed(1)}`).join(' · '),page:'new',cta:'Revisar ahora'});
-  if(highFitAdjacent.length)priorities.push({kind:'urgent',title:`${highFitAdjacent.length} oportunidad${highFitAdjacent.length===1?'':'es'} adyacente${highFitAdjacent.length===1?'':'s'} con fit alto`,note:highFitAdjacent.slice(0,2).map(x=>`${x.company}: ${x.role} · ${Number(x.fit).toFixed(1)}`).join(' · '),page:'new',cta:'Ver para ti'});
+  if(highFitNew.length)priorities.push({kind:'urgent',title:`${highFitNew.length} vacante${highFitNew.length===1?'':'s'} pendiente${highFitNew.length===1?'':'s'} con fit alto`,note:highFitNew.slice(0,2).map(x=>`${x.company}: ${x.role} · ${Number(x.fit).toFixed(1)}`).join(' · '),page:'new',cta:'Revisar ahora'});
   if(topDecisions.length)priorities.push({kind:'',title:'Las tres mejores decisiones ahora',note:topDecisions.map(x=>`${x.company}: ${x.role} · ${decisionScoreMeta(x).score}`).join(' · '),page:'new',cta:'Revisar'});
   if(FAILED_SOURCES.length)priorities.push({kind:'alert',title:`Cobertura incompleta: ${FAILED_SOURCES.length} fuentes fallidas`,note:`Cobertura confiable ${REVIEWED_SOURCES.length} de ${sourceTotal}. ${sourcePct}% requiere revisión manual y sigue siendo MONITOR INCIDENT.`,page:'sources',cta:'Ver alerta'});
   if(MAIL_AUDIT.newRelevant)priorities.push({kind:'alert',title:`${MAIL_AUDIT.newRelevant} correo${MAIL_AUDIT.newRelevant===1?'':'s'} laboral${MAIL_AUDIT.newRelevant===1?'':'es'} nuevo${MAIL_AUDIT.newRelevant===1?'':'s'}`,note:'Revisar si confirma una postulación, solicita una acción o cambia un proceso.',page:'mail',cta:'Ver correos'});
-  if(NEW_JOB_RECOMMENDATIONS.length)priorities.push({kind:'',title:`${NEW_JOB_RECOMMENDATIONS.length} vacantes nuevas ya evaluadas`,note:'Agrupadas por empresa con razón a favor, recomendación y pared o riesgo exacto.',page:'new',cta:'Ver nuevas'});
-  if(ADJACENT_OPPORTUNITIES.length)priorities.push({kind:'',title:`${ADJACENT_OPPORTUNITIES.length} oportunidades adyacentes encontradas por Luna mid`,note:'Fuera de las rutas habituales, con fuente oficial, puntaje de fit y riesgo exacto.',page:'new',cta:'Ver para ti'});
+  if(newPool.length)priorities.push({kind:'',title:`${newPool.length} vacante${newPool.length===1?'':'s'} pendiente${newPool.length===1?'':'s'} de revisar`,note:'Agrupadas por empresa con razón a favor, recomendación y pared o riesgo exacto.',page:'new',cta:'Ver nuevas'});
   if(timing.stale.length)priorities.push({kind:'',title:`${timing.stale.length} procesos sobre el umbral de silencio`,note:`Sin respuesta después de ${timing.ghostAt} días. Revisar seguimientos sugeridos sin cambiar el tracker automáticamente.`,page:'calendar',cta:'Ver calendario'});
   if(!priorities.length)priorities.push({kind:'',title:'No hay una acción urgente',note:'El tracker no muestra cierres cercanos, entrevistas próximas ni alertas nuevas.',page:'apps',cta:'Ver pipeline'});
   priorityEl.innerHTML=priorities.slice(0,8).map((p,i)=>`<article class="home-priority ${p.kind}"><div class="home-rank">${i+1}</div><div class="home-priority-main"><b>${esc(p.title)}</b><span>${esc(p.note)}</span></div><button class="home-go" onclick="goPage('${p.page}')">${esc(p.cta)}</button></article>`).join('');
@@ -7924,7 +7922,7 @@ function renderHome(){
   ];
   const denom=Math.max(1,pipeline.reduce((a,x)=>a+x.value,0));
   pipelineEl.innerHTML=`<div class="home-pipeline-bar">${pipeline.filter(x=>x.value).map(x=>`<span style="width:${x.value/denom*100}%;background:${x.color}"></span>`).join('')}</div><div class="home-pipeline-legend">${pipeline.map(x=>`<div class="home-pipeline-item"><b style="color:${x.color}">${x.value}</b><span>${x.label}</span></div>`).join('')}</div>`;
-  document.getElementById('homeHeadline').textContent=deadlines.length?'Hay cierres confirmados próximos. Revísalos antes que cualquier otra sección.':FAILED_SOURCES.length?`Empieza por la alerta de cobertura y luego revisa las ${NEW_JOB_RECOMMENDATIONS.length} vacantes nuevas evaluadas.`:'No hay una alerta urgente. Revisa oportunidades nuevas y procesos activos.';
+  document.getElementById('homeHeadline').textContent=deadlines.length?'Hay cierres confirmados próximos. Revísalos antes que cualquier otra sección.':FAILED_SOURCES.length?`Empieza por la alerta de cobertura y luego revisa las ${newPool.length} vacantes pendientes.`:'No hay una alerta urgente. Revisa oportunidades nuevas y procesos activos.';
   document.getElementById('homeMailFreshness').textContent=compactStamp(MAIL_AUDIT.checkedAt);
   const trackerFresh=document.getElementById('homeTrackerFreshness'),sourceFresh=document.getElementById('homeSourceFreshness'),feedFresh=document.getElementById('homeFeedFreshness');
   if(trackerFresh)trackerFresh.textContent=`${S.jobs.length} puestos · ${compactStamp(new Date(document.lastModified).toISOString())}`;
