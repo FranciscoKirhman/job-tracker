@@ -2,7 +2,7 @@
 <html lang="es"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://127.0.0.1:8765; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://127.0.0.1:8765 https://jobs3-whatsapp-relay.franckirhman.workers.dev; object-src 'none'; base-uri 'none'; form-action 'self'">
 <title>Jobs3 · Centro de control 2026</title>
 <script src="tracker-assets/chart.umd.js"></script>
 <style>
@@ -7345,6 +7345,11 @@ function cvEvidenceFor(j){
   if(/visitador|comercial|marketing|product management/.test(t))return'Master CV: coordinación con HCP, Power BI y entorno MedTech en Johnson & Johnson. No acredita ventas, promoción médica ni marketing.';
   return'Master CV: metodología de investigación, análisis de datos, documentación científica y coordinación en entornos regulados. La experiencia sectorial específica sigue siendo limitada.';
 }
+const MOBILE_SYNC_URL='https://jobs3-whatsapp-relay.franckirhman.workers.dev/mobile-sync';
+const MOBILE_SYNC_SECRET='vIoBXWv0rcvTHB4S676S9TlSZzxccnIQQKwfxb7yNmE';
+function mobileSyncPush(action,j){
+  fetch(MOBILE_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json','X-App-Secret':MOBILE_SYNC_SECRET},body:JSON.stringify({action,company:j.company||'',role:j.role||'',jobId:j.jobId||'',location:j.location||'',fitScore:Number(j.fit)||0,url:j.url||'',reason:j.reason||'',risk:j.risk||''})}).catch(()=>{});
+}
 function opportunityKey(j){return `${j.company}|${j.jobId||j.role}`;}
 function allComparableOpportunities(){return NEW_JOB_RECOMMENDATIONS.map(j=>({...j,firstSeen:j.firstSeen||'2026-08-02 11:30 America/Santiago',origin:'Nuevas'})).concat(ADJACENT_OPPORTUNITIES.map(j=>({...j,firstSeen:j.checked,closing:j.posted||'No publicada',origin:'Para ti'})));}
 function findOpportunity(key){return allComparableOpportunities().find(j=>opportunityKey(j)===key);}
@@ -7353,7 +7358,7 @@ function companyRoleKeyLoose(company,role){return normKey(company)+'|'+normKey(r
 function discardNewJob(key){
   if(!confirm('¿Marcar que no vas a postular a esto? No se volverá a mostrar aquí ni en las alertas automáticas.'))return;
   const j=findOpportunity(key);
-  if(j){DISCARDED_POSTINGS.push({company:j.company,role:j.role,jobId:j.jobId||'',discardedAt:new Date().toISOString()});saveDiscarded();}
+  if(j){DISCARDED_POSTINGS.push({company:j.company,role:j.role,jobId:j.jobId||'',discardedAt:new Date().toISOString()});saveDiscarded();mobileSyncPush('discard',j);}
   renderNewJobs();toast('Guardado en este navegador. Haz clic en Guardar para compartirlo con la automatización.');
 }
 function isAlreadyApplied(j){
@@ -7720,7 +7725,7 @@ function swipeSaveOpportunity(key){
   const priority=(+j.fit>=8)?'HIGH':(+j.fit>=5)?'MEDIUM':'LOW';
   const record={company:j.company,role:j.role,location:j.location||'',jobId:j.jobId||'',priority,status:'todo',fitScore:Number(j.fit)||0,links:j.url||'',jobDescription:j.reason||'',strategicNotes:`Guardada desde el swipe de Nuevas. Pared o riesgo: ${j.risk||'—'}`};
   const result=importRecords(record);
-  if(result.added.length){save();renderAll();toast('Guardada en Por postular ✓');}
+  if(result.added.length){save();renderAll();toast('Guardada en Por postular ✓');mobileSyncPush('save',j);}
   else{toast('Ya estaba en tu pipeline.');renderSwipeStack();}
 }
 
