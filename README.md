@@ -12,6 +12,7 @@ A self-contained job application tracker, plus the CLI tooling that keeps it upd
 - **`tools/whatsapp_command.py`** + **`tools/send_whatsapp.py`** — parse a short WhatsApp message (`pipeline`, `update: <company> | <status>`) and send replies via the Meta Cloud API.
 - **`.github/workflows/whatsapp.yml`** — scheduled + on-demand GitHub Actions workflow that runs the above and commits tracker changes back.
 - **`cloudflare-worker/`** — always-on relay that receives your WhatsApp replies (GitHub Actions can't host a webhook) and forwards them to the workflow. See `docs/WHATSAPP_SETUP.md`.
+- **`tools/mobile_sync.py`** + **`.github/workflows/mobile-sync.yml`** — the same Cloudflare Worker also bridges phone swipes (discard/save from the "Nuevas" page, and their undo) into the repo, since the static app has no backend of its own to write to. See `docs/CLOUDFLARE_SYNC_SETUP.md`.
 - **`tools/discover_postings.py`** + **`tools/linkedin-search/`** — finds new job postings (LinkedIn + Workday, no LLM calls) and adds them to `MARKET_HISTORY`, alerting immediately over WhatsApp for high-fit matches. See `docs/JOB_DISCOVERY.md`.
 - **`tools/sync_market_history.py`** + **`tools/sync_local.sh`** — keeps `MARKET_HISTORY` in sync between this repo and the local working file, on a macOS LaunchAgent schedule. See `docs/LOCAL_SYNC_SETUP.md`.
 
@@ -81,6 +82,10 @@ Dumps counts and records per pipeline stage as JSON — useful for scripting or 
 
 Set up: [docs/WHATSAPP_SETUP.md](docs/WHATSAPP_SETUP.md). Once configured, a scheduled GitHub Actions workflow sends a daily pipeline digest to WhatsApp, and you can text back commands (`pipeline`, `update: <company> | <status>`) that update the tracker and commit the change — no PC required.
 
+## Mobile sync (swipe from the phone)
+
+Set up: [docs/CLOUDFLARE_SYNC_SETUP.md](docs/CLOUDFLARE_SYNC_SETUP.md). Swiping right/left on the "Nuevas" page (and deleting a job from Procesos, or undoing any of those) pushes the change straight to this repo through the same Worker used for WhatsApp — no manual save-and-push step, no waiting for the local sync LaunchAgent.
+
 ## Status
 
-The local working copy and this repo sync automatically: a macOS LaunchAgent runs `tools/sync_local.sh` every 30 minutes (see [docs/LOCAL_SYNC_SETUP.md](docs/LOCAL_SYNC_SETUP.md)) to merge discovered postings, discards, and tracked-application identities both ways, and WhatsApp two-way commands write status changes directly to this repo via GitHub Actions. `SAVED_DATA` (your applications and their status) is the one thing that's still local-authoritative rather than auto-synced, by design — see that doc for why.
+The local working copy and this repo sync automatically: a macOS LaunchAgent runs `tools/sync_local.sh` every 30 minutes (see [docs/LOCAL_SYNC_SETUP.md](docs/LOCAL_SYNC_SETUP.md)) to merge discovered postings, discards, and tracked-application identities both ways, and WhatsApp two-way commands write status changes directly to this repo via GitHub Actions. Mobile-sync swipes (above) also write directly to this repo, immediately. The one thing that's still local-authoritative rather than auto-synced is `SAVED_DATA` edits made *manually in a browser session* (adding/editing an application by hand, not via a swipe) — those need an explicit "Guardar" in the app plus a `git push`, since a static page can't silently overwrite an arbitrary file on disk without you picking it via a save dialog. See `docs/LOCAL_SYNC_SETUP.md` for the LaunchAgent side of that story.
