@@ -3,9 +3,10 @@
 //
 // 1. Relays incoming WhatsApp messages to the job-tracker repo via
 //    repository_dispatch (POST /, Meta's webhook shape).
-// 2. Bridges phone-swipe actions (discard/save) from the static tracker
-//    app -- which has no backend of its own -- to the same repo, also via
-//    repository_dispatch (POST /mobile-sync, app's own shape + shared secret).
+// 2. Bridges phone-swipe actions (discard/save, and their undo:
+//    restore/remove) from the static tracker app -- which has no backend
+//    of its own -- to the same repo, also via repository_dispatch
+//    (POST /mobile-sync, app's own shape + shared secret).
 //
 // Required secrets (set with `wrangler secret put <NAME>`, never committed):
 //   VERIFY_TOKEN  - a random string you choose; must match Meta's webhook config
@@ -19,7 +20,7 @@
 //                   just enough to stop randos who find this URL from
 //                   spamming the repo)
 
-const MOBILE_SYNC_ACTIONS = new Set(["discard", "save"]);
+const MOBILE_SYNC_ACTIONS = new Set(["discard", "save", "restore", "remove"]);
 
 function cors(body, status, extraHeaders = {}) {
   return new Response(body, {

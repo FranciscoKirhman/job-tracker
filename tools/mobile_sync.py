@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Apply a mobile swipe action (discard or save-to-pipeline) to the tracker.
+"""Apply a mobile swipe action (discard/save, or their undo: restore/remove)
+to the tracker.
 
 Invoked from .github/workflows/mobile-sync.yml on a `repository_dispatch`
 event, which is itself triggered by a small Cloudflare Worker that phone
@@ -7,7 +8,11 @@ swipes POST to (see docs/CLOUDFLARE_SYNC_SETUP.md). Mirrors the exact
 DISCARDED_POSTINGS shape discardNewJob() writes client-side, and the exact
 SAVED_DATA record shape make_todo_record() writes in discover_postings.py,
 so a mobile-synced action looks identical to one made through the app
-itself or the automated discovery pipeline.
+itself or the automated discovery pipeline. `restore` undoes a `discard`
+(removes the matching DISCARDED_POSTINGS entry) and `remove` undoes a
+`save` (removes the matching SAVED_DATA entry), both matched by the same
+company+role identity key -- this is how the app's "Deshacer" button
+reverses an action that already synced to the repo.
 """
 
 from __future__ import annotations
@@ -34,7 +39,7 @@ SAVED_DATA_PATTERN = re.compile(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tracker", required=True, type=Path)
-    parser.add_argument("--action", required=True, choices=["discard", "save"])
+    parser.add_argument("--action", required=True, choices=["discard", "save", "restore", "remove"])
     parser.add_argument("--company", required=True)
     parser.add_argument("--role", required=True)
     parser.add_argument("--job-id", default="")
@@ -120,15 +125,46 @@ def apply_save(html: str, args: argparse.Namespace) -> tuple[str, str]:
     return new_html, f"Saved to pipeline: {args.company} — {args.role} (fit {fit_score:.1f})"
 
 
+def apply_restore(html: str, args: argparse.Namespace) -> tuple[str, str]:
+    match = DISCARDED_PATTERN.search(html)
+    if not match:
+        raise RuntimeError("DISCARDED_POSTINGS block not found in tracker")
+    entries = json.loads(match.group(2))
+    key = identity_key(args.company, args.role)
+    remaining = [e for e in entries if identity_key(e.get("company"), e.get("role")) != key]
+    if len(remaining) == len(entries):
+        return html, f"Not discarded, no change: {args.company} — {args.role}"
+    serialized = json.dumps(remaining, ensure_ascii=False, indent=2)
+    new_html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
+    return new_html, f"Restored (undo discard): {args.company} — {args.role}"
+
+
+def apply_remove(html: str, args: argparse.Namespace) -> tuple[str, str]:
+    match = SAVED_DATA_PATTERN.search(html)
+    if not match:
+        raise RuntimeError("SAVED_DATA block not found in tracker")
+    jobs = json.loads(match.group(2))
+    key = identity_key(args.company, args.role)
+    remaining = [j for j in jobs if identity_key(j.get("company"), j.get("role")) != key]
+    if len(remaining) == len(jobs):
+        return html, f"Not tracked, no change: {args.company} — {args.role}"
+    serialized = json.dumps(remaining, ensure_ascii=False, indent=2)
+    new_html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
+    return new_html, f"Removed (undo save): {args.company} — {args.role}"
+
+
 def main() -> int:
     args = parse_args()
     html = args.tracker.read_text(encoding="utf-8")
 
+    handlers = {
+        "discard": apply_discard,
+        "save": apply_save,
+        "restore": apply_restore,
+        "remove": apply_remove,
+    }
     try:
-        if args.action == "discard":
-            new_html, message = apply_discard(html, args)
-        else:
-            new_html, message = apply_save(html, args)
+        new_html, message = handlers[args.action](html, args)
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 2

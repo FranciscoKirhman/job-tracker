@@ -718,7 +718,7 @@ html{scroll-padding-top:96px;}
           <button class="btn" onclick="document.getElementById('txtIn').click()"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>Añadir desde archivo</button>
           <button class="btn" onclick="importData()"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Importar datos</button>
           <button class="btn" onclick="exportJSON()"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>Crear respaldo</button>
-          <button class="btn undo-state" id="undoCanonicalButton" onclick="undoCanonicalChange()" disabled="">Deshacer último cambio</button>
+          <button class="btn undo-state" id="undoCanonicalButton" onclick="undoLastAction()" disabled="">Deshacer último cambio</button>
         </div>
       </details>
     </div>
@@ -2160,7 +2160,7 @@ Inicio estimado: 06 de julio de 2026</div></div></div></td></tr><tr class="co-hd
     <div id="highFitAlert"><div class="high-fit-alert none"><b>Sin alerta de fit alto:</b> ninguna de las quince vacantes nuevas alcanza 8 de 10. Los mejores ajustes siguen visibles y conservan su riesgo exacto.</div></div>
     <section class="weekly-fit-box"><div class="weekly-fit-head"><div><h3>Vista rápida de la última semana</h3><p>Vacantes detectadas en los últimos siete días con fit 6 o superior, ordenadas primero por fit y luego por fecha.</p></div><span class="fit-score fit-good" id="weeklyFitCount">2 vacantes</span></div><div class="weekly-fit-list" id="weeklyFitList"><article class="weekly-fit-item"><div><b>Boston Scientific · Regulatory Affairs Support, Chile</b><span>2026-08-02 11:30 · </span></div><div><span class="fit-score fit-good">Fit 6.6</span><span class="decision-score decision-score-good">Decisión 59</span><button class="home-go" style="margin-top:5px" onclick="focusNewJob(&quot;Boston Scientific|563602813318017&quot;)">Ver</button></div></article><article class="weekly-fit-item"><div><b>Abbott · Supervisor de Investigaciones de Laboratorio y Troubleshooting</b><span>2026-08-02 11:30 · </span></div><div><span class="fit-score fit-stretch">Fit 6.4</span><span class="decision-score decision-score-review">Decisión 52</span><button class="home-go" style="margin-top:5px" onclick="focusNewJob(&quot;Abbott|31157276&quot;)">Ver</button></div></article></div></section>
     <section class="weekly-fit-box intl-box"><div class="weekly-fit-head"><div><h3>Vacantes internacionales</h3><p>Vacantes nuevas fuera de Chile, detectadas entre las mismas fuentes.</p></div><span class="fit-score fit-good" id="internationalCount">0 vacantes</span></div><div class="weekly-fit-list" id="internationalList"><div class="compare-empty">Ninguna vacante nueva evaluada está fuera de Chile por ahora.</div></div></section>
-    <details class="weekly-fit-box swipe-box">
+    <details class="weekly-fit-box swipe-box" open>
       <summary style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <div><h3>Triage rápido (swipe)</h3><p>Desliza para decidir empresa por empresa: derecha guarda en Por postular, izquierda descarta. Misma información que la lista de abajo.</p></div>
         <span class="fit-score fit-good" id="swipeStackCount">0 vacantes</span>
@@ -7356,10 +7356,14 @@ function findOpportunity(key){return allComparableOpportunities().find(j=>opport
 function discardedNewKeys(){return new Set(DISCARDED_POSTINGS.map(d=>companyRoleKeyLoose(d.company,d.role)));}
 function companyRoleKeyLoose(company,role){return normKey(company)+'|'+normKey(role);}
 function discardNewJob(key){
-  if(!confirm('¿Marcar que no vas a postular a esto? No se volverá a mostrar aquí ni en las alertas automáticas.'))return;
   const j=findOpportunity(key);
-  if(j){DISCARDED_POSTINGS.push({company:j.company,role:j.role,jobId:j.jobId||'',discardedAt:new Date().toISOString()});saveDiscarded();mobileSyncPush('discard',j);}
-  renderNewJobs();toast('Guardado en este navegador. Haz clic en Guardar para compartirlo con la automatización.');
+  if(!j)return;
+  DISCARDED_POSTINGS.push({company:j.company,role:j.role,jobId:j.jobId||'',discardedAt:new Date().toISOString()});
+  saveDiscarded();
+  rememberDiscardUndo(j);
+  mobileSyncPush('discard',j);
+  renderNewJobs();
+  toast(`Descartada: ${j.company}. Se sincroniza sola — Deshacer en Herramientas si fue un error.`);
 }
 function isAlreadyApplied(j){
   const company=normKey(canonicalCompanyName(j.company)),role=normKey(j.role);
@@ -7725,7 +7729,7 @@ function swipeSaveOpportunity(key){
   const priority=(+j.fit>=8)?'HIGH':(+j.fit>=5)?'MEDIUM':'LOW';
   const record={company:j.company,role:j.role,location:j.location||'',jobId:j.jobId||'',priority,status:'todo',fitScore:Number(j.fit)||0,links:j.url||'',jobDescription:j.reason||'',strategicNotes:`Guardada desde el swipe de Nuevas. Pared o riesgo: ${j.risk||'—'}`};
   const result=importRecords(record);
-  if(result.added.length){save();renderAll();toast('Guardada en Por postular ✓');mobileSyncPush('save',j);}
+  if(result.added.length){save();rememberSaveUndo(result.added[0]);mobileSyncPush('save',j);renderAll();toast('Guardada en Por postular ✓ — Deshacer en Herramientas si fue un error.');}
   else{toast('Ya estaba en tu pipeline.');renderSwipeStack();}
 }
 
@@ -8076,8 +8080,36 @@ function toggleDetail(id){if(S.openDetails.has(id))S.openDetails.delete(id);else
 const CANONICAL_UNDO_KEY='jobs3_canonical_undo_v1';
 let STATUS_EDITOR_ID='';
 function updateUndoButton(){const button=document.getElementById('undoCanonicalButton');if(button)button.disabled=!localStorage.getItem(CANONICAL_UNDO_KEY);}
-function rememberCanonicalChange(j,label){localStorage.setItem(CANONICAL_UNDO_KEY,JSON.stringify({id:j.id,before:structuredClone(j),label,at:new Date().toISOString()}));updateUndoButton();}
-function undoCanonicalChange(){try{const saved=JSON.parse(localStorage.getItem(CANONICAL_UNDO_KEY)||'null');if(!saved||!saved.id||!saved.before)return;const index=S.jobs.findIndex(j=>j.id===saved.id);if(index<0)return;S.jobs[index]=migrate(saved.before);localStorage.removeItem(CANONICAL_UNDO_KEY);save();renderAll();updateUndoButton();toast('Último cambio canónico deshecho.');}catch{toast('No fue posible deshacer el cambio.');}}
+function rememberCanonicalChange(j,label){localStorage.setItem(CANONICAL_UNDO_KEY,JSON.stringify({type:'canonical',id:j.id,before:structuredClone(j),label,at:new Date().toISOString()}));updateUndoButton();}
+function rememberDiscardUndo(j){localStorage.setItem(CANONICAL_UNDO_KEY,JSON.stringify({type:'discard',company:j.company,role:j.role,jobId:j.jobId||'',label:`Descarte: ${j.company} · ${j.role}`,at:new Date().toISOString()}));updateUndoButton();}
+function rememberSaveUndo(record){localStorage.setItem(CANONICAL_UNDO_KEY,JSON.stringify({type:'save',id:record.id,company:record.company,role:record.role,jobId:record.jobId||'',label:`Guardado: ${record.company} · ${record.role}`,at:new Date().toISOString()}));updateUndoButton();}
+function undoLastAction(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(CANONICAL_UNDO_KEY)||'null');
+    if(!saved)return;
+    if(saved.type==='discard'){
+      const idx=DISCARDED_POSTINGS.findIndex(d=>companyRoleKeyLoose(d.company,d.role)===companyRoleKeyLoose(saved.company,saved.role));
+      if(idx>=0)DISCARDED_POSTINGS.splice(idx,1);
+      saveDiscarded();
+      mobileSyncPush('restore',{company:saved.company,role:saved.role,jobId:saved.jobId});
+      renderNewJobs();renderHome();
+    }else if(saved.type==='save'){
+      S.jobs=S.jobs.filter(x=>x.id!==saved.id);
+      save();
+      mobileSyncPush('remove',{company:saved.company,role:saved.role,jobId:saved.jobId});
+      renderAll();
+    }else{
+      if(!saved.id||!saved.before)return;
+      const index=S.jobs.findIndex(j=>j.id===saved.id);
+      if(index<0)return;
+      S.jobs[index]=migrate(saved.before);
+      save();renderAll();
+    }
+    localStorage.removeItem(CANONICAL_UNDO_KEY);
+    updateUndoButton();
+    toast(`Deshecho: ${saved.label}`);
+  }catch{toast('No fue posible deshacer el cambio.');}
+}
 function openStatusEditor(id,preset=''){const j=S.jobs.find(x=>x.id===id);if(!j)return;STATUS_EDITOR_ID=id;document.getElementById('statusEditorValue').value=preset||j.status;document.getElementById('statusEditorDate').value=today();document.getElementById('statusEditorEvidence').value='';document.getElementById('statusEditorOverlay').classList.add('open');}
 function closeStatusEditor(){document.getElementById('statusEditorOverlay').classList.remove('open');STATUS_EDITOR_ID='';}
 function saveExplicitStatus(){const j=S.jobs.find(x=>x.id===STATUS_EDITOR_ID);if(!j)return;const next=document.getElementById('statusEditorValue').value,date=document.getElementById('statusEditorDate').value,evidence=document.getElementById('statusEditorEvidence').value.trim();if(!STATUSES.includes(next)||!date||!evidence){toast('Elige estado, fecha y evidencia.');return;}if(next==='todo'&&j.status!=='todo'){toast('No se puede volver a Por postular sin borrar el historial. Usa Deshacer o Retirada.');return;}if(next==='interview'&&!(j.interviews||[]).length){toast('Registra la entrevista en el formulario antes de cambiar el estado.');return;}if(next===j.status){toast('Elige un estado distinto.');return;}rememberCanonicalChange(j,`Estado ${j.status} a ${next}`);j.status=next;j.statusEvidence=Array.isArray(j.statusEvidence)?j.statusEvidence:[];j.statusEvidence.push({status:next,date,evidence:boundedText(evidence,1200),recordedAt:new Date().toISOString()});if(next==='applied'&&!j.appliedDate)j.appliedDate=date;if(next==='rejected')j.rejectedDate=date;if(['interview','offer'].includes(next)&&!j.replyDate)j.replyDate=date;save();closeStatusEditor();renderAll();toast(`Estado actualizado a ${SLABELS[next]}.`);}
