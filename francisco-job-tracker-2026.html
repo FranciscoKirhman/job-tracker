@@ -575,23 +575,26 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .nav-more.has-active>summary{color:var(--text);border-color:rgba(10,132,255,.25);background:rgba(10,132,255,.11);}
 .nav-more-indicator{display:none;width:6px;height:6px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px rgba(10,132,255,.12);}
 .nav-more.has-active .nav-more-indicator{display:inline-block;}
-.nav-more-pop{position:absolute;top:calc(100% + 9px);right:0;z-index:60;width:280px;padding:10px;border:1px solid var(--border2);border-radius:18px;background:rgba(28,28,30,.97);box-shadow:0 24px 65px rgba(0,0,0,.48);backdrop-filter:blur(24px);}
+.nav-more-pop{position:absolute;top:calc(100% + 9px);right:0;z-index:60;width:280px;padding:14px;border:1px solid var(--border2);border-radius:20px;background:rgba(28,28,30,.97);box-shadow:0 24px 65px rgba(0,0,0,.48);backdrop-filter:blur(24px);}
+.nav-more-pop::after{content:'';position:absolute;bottom:-7px;right:28px;width:14px;height:14px;background:rgba(28,28,30,.97);border-right:1px solid var(--border2);border-bottom:1px solid var(--border2);transform:rotate(45deg);border-bottom-right-radius:3px;}
 .nav-more-handle{display:none;}
-.nav-more-live{font-size:.62rem;color:var(--text3);padding:2px 4px 9px;border-bottom:1px solid var(--border);margin-bottom:8px;line-height:1.4;}
-.nav-more-live b{color:var(--cyan);font-weight:700;}
-.nav-more-tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.nav-more-tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:10px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text2);cursor:pointer;text-align:left;transition:background .15s ease,border-color .15s ease;}
+.nav-more-live{display:flex;align-items:center;gap:9px;background:rgba(100,210,255,.1);border:1px solid rgba(100,210,255,.26);border-radius:13px;padding:9px 11px;margin-bottom:12px;}
+.nml-icon{width:26px;height:26px;border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(100,210,255,.16);color:var(--cyan);}
+.nml-text{font-size:.66rem;color:var(--text);line-height:1.35;min-width:0;}
+.nml-text b{color:var(--cyan);font-weight:700;}
+.nav-more-group{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+.nav-more-group:last-child{margin-bottom:0;}
+.nav-more-group-label{font:700 .58rem 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding-left:2px;}
+.nav-more-group-items{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.nav-more-tile{display:flex;align-items:center;gap:7px;padding:8px 9px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text2);cursor:pointer;text-align:left;transition:background .15s ease,border-color .15s ease;}
 .nav-more-tile:hover{background:rgba(255,255,255,.07);border-color:var(--border2);}
-.nmt-icon{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;}
-.nmt-label{font:720 .68rem 'DM Sans',sans-serif;color:var(--text);}
-.nmt-count{font:700 .6rem 'JetBrains Mono',monospace;color:var(--text3);}
-.nmt-hist{background:rgba(100,210,255,.14);}
-.nmt-emp{background:rgba(10,132,255,.14);}
-.nmt-foryou{background:rgba(191,90,242,.14);}
-.nmt-src{background:rgba(255,159,10,.14);}
-.nmt-mail{background:rgba(48,209,88,.14);}
-.nav-more-tile.nmt-ai{background:linear-gradient(135deg,rgba(10,132,255,.09),rgba(191,90,242,.09));border-color:rgba(191,90,242,.22);grid-column:1/-1;flex-direction:row;align-items:center;}
-.nmt-ai-ico{background:transparent;color:var(--cyan);}
+.nav-more-tile:active{transform:scale(.97);}
+.nmt-icon{width:24px;height:24px;border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;}
+.nmt-label{font:600 .66rem 'DM Sans',sans-serif;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nmt-count{font:700 .58rem 'JetBrains Mono',monospace;color:var(--text3);background:rgba(255,255,255,.06);padding:1px 6px;border-radius:6px;flex:none;}
+.nmt-blue{background:rgba(10,132,255,.16);color:var(--blue);}
+.nmt-purple{background:rgba(191,90,242,.16);color:var(--purple);}
+.nmt-cyan{background:rgba(100,210,255,.16);color:var(--cyan);}
 @media(max-width:900px){
   .hdr-title-row{align-items:flex-start;flex-direction:column;gap:6px;}
   .hdr-r{width:auto;overflow:visible;}
@@ -685,8 +688,8 @@ html{scroll-padding-top:96px;}
   .nav-more>summary{min-height:42px;padding:7px 8px;font-size:.6rem;}
   .nav-more-pop{bottom:calc(84px + env(safe-area-inset-bottom));right:8px;left:8px;border-radius:22px 22px 18px 18px;}
   .nav-more-handle{display:block;width:36px;height:4px;border-radius:2px;background:var(--border2);margin:2px auto 8px;}
-  .nav-more-live{font-size:.66rem;padding-bottom:10px;margin-bottom:10px;}
-  .nav-more-tile{padding:12px;}
+  .nml-text{font-size:.7rem;}
+  .nav-more-tile{padding:10px 11px;}
   body:has(.nav-more[open])::before{content:'';position:fixed;inset:0;background:rgba(4,5,9,.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:58;}
   .home-alert-strip{grid-template-columns:36px minmax(0,1fr)}
   .home-alert-strip .home-go{grid-column:2;width:max-content}
@@ -733,14 +736,27 @@ html{scroll-padding-top:96px;}
       <summary><span class="nav-more-indicator"></span>Más</summary>
       <div class="nav-more-pop">
         <div class="nav-more-handle"></div>
-        <div class="nav-more-live" id="navMoreLive">Cargando…</div>
-        <div class="nav-more-tiles">
-          <button class="nav-more-tile" id="nav-history" onclick="goPage('history')"><span class="nmt-icon nmt-hist">🕘</span><span class="nmt-label">Historial</span><span class="nmt-count" id="historyNavCnt">146</span></button>
-          <button class="nav-more-tile" id="nav-companies" onclick="goPage('companies')"><span class="nmt-icon nmt-emp">🏢</span><span class="nmt-label">Empresas</span><span class="nmt-count" id="companyNavCnt">36</span></button>
-          <button class="nav-more-tile" id="nav-interest" onclick="goPage('interest')"><span class="nmt-icon nmt-foryou">✨</span><span class="nmt-label">Para ti</span><span class="nmt-count" id="interestNavCnt">2</span></button>
-          <button class="nav-more-tile" id="nav-sources" onclick="goPage('sources')"><span class="nmt-icon nmt-src">🌐</span><span class="nmt-label">Fuentes</span><span class="nmt-count" id="sourceNavCnt">6</span></button>
-          <button class="nav-more-tile" id="nav-mail" onclick="goPage('mail')"><span class="nmt-icon nmt-mail">✉️</span><span class="nmt-label">Correos</span><span class="nmt-count" id="mailNavCnt">3</span></button>
-          <button class="nav-more-tile nmt-ai" id="nav-ai" onclick="goPage('ai')"><span class="nmt-icon nmt-ai-ico">🧠</span><span class="nmt-label">Contexto IA</span></button>
+        <div class="nav-more-live" id="navMoreLive"><span class="nml-icon"><svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.5v4.8l3.2 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nml-text">Cargando…</span></div>
+        <div class="nav-more-group">
+          <div class="nav-more-group-label">Datos</div>
+          <div class="nav-more-group-items">
+            <button class="nav-more-tile" id="nav-history" onclick="goPage('history')"><span class="nmt-icon nmt-blue"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M4.2 12a7.8 7.8 0 1 0 2.9-6.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4 4.2v4.4h4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8v4.3l3 1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nmt-label">Historial</span><span class="nmt-count" id="historyNavCnt">146</span></button>
+            <button class="nav-more-tile" id="nav-companies" onclick="goPage('companies')"><span class="nmt-icon nmt-blue"><svg viewBox="0 0 24 24" width="14" height="14"><rect x="5" y="3.5" width="9" height="17" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 9h5v11.5h-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 7h1M11.3 7h1M8 10.4h1M11.3 10.4h1M8 13.8h1M11.3 13.8h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span class="nmt-label">Empresas</span><span class="nmt-count" id="companyNavCnt">36</span></button>
+          </div>
+        </div>
+        <div class="nav-more-group">
+          <div class="nav-more-group-label">Análisis</div>
+          <div class="nav-more-group-items">
+            <button class="nav-more-tile" id="nav-interest" onclick="goPage('interest')"><span class="nmt-icon nmt-purple"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 3.5l2.5 5.6 6 .6-4.6 4 1.3 6-5.2-3.2-5.2 3.2 1.3-6-4.6-4 6-.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><span class="nmt-label">Para ti</span><span class="nmt-count" id="interestNavCnt">2</span></button>
+            <button class="nav-more-tile" id="nav-sources" onclick="goPage('sources')"><span class="nmt-icon nmt-purple"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M4.5 4.7a14.8 14.8 0 0 1 14.8 14.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4.5 9.6a9.9 9.9 0 0 1 9.9 9.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="6" cy="18" r="1.9" fill="currentColor"/></svg></span><span class="nmt-label">Fuentes</span><span class="nmt-count" id="sourceNavCnt">6</span></button>
+          </div>
+        </div>
+        <div class="nav-more-group">
+          <div class="nav-more-group-label">Comunicación</div>
+          <div class="nav-more-group-items">
+            <button class="nav-more-tile" id="nav-mail" onclick="goPage('mail')"><span class="nmt-icon nmt-cyan"><svg viewBox="0 0 24 24" width="14" height="14"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.2 6.6 12 13l7.8-6.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="nmt-label">Correos</span><span class="nmt-count" id="mailNavCnt">3</span></button>
+            <button class="nav-more-tile" id="nav-ai" onclick="goPage('ai')"><span class="nmt-icon nmt-cyan"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 3v3.6M12 17.4V21M3 12h3.6M17.4 12H21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M6.2 6.2l1.6 1.6M16.2 16.2l1.6 1.6M17.8 6.2l-1.6 1.6M7.8 16.2l-1.6 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span><span class="nmt-label">Contexto IA</span></button>
+          </div>
         </div>
       </div>
     </details>
@@ -7005,6 +7021,22 @@ function loadData(){
   S.jobs=S.jobs.map(migrate);
 }
 function save(){localStorage.setItem(SK,JSON.stringify({updatedAt:new Date().toISOString(),jobs:S.jobs}));}
+// DISCARDED_POSTINGS had no browser-local persistence at all -- unlike
+// S.jobs (SK/loadData() above), a swipe-left ("No postularé") only ever
+// lived in memory until the next explicit Guardar, so a page reload (or
+// just closing the tab, easy to do mid-swipe-session on a phone) silently
+// lost every discard decision. Same additive pattern as save()/loadData(),
+// minus the confirm() reconciliation dialog: two discard lists never
+// really conflict (a discard from either source is equally valid), so a
+// silent union merge is correct and doesn't add a second popup on load.
+const DISCARD_SK='fk_discarded_v1';
+function saveDiscarded(){localStorage.setItem(DISCARD_SK,JSON.stringify(DISCARDED_POSTINGS));}
+function loadDiscarded(){
+  let stored;try{stored=JSON.parse(localStorage.getItem(DISCARD_SK)||'[]');}catch{stored=[];}
+  if(!Array.isArray(stored)||!stored.length)return;
+  const known=new Set(DISCARDED_POSTINGS.map(d=>companyRoleKeyLoose(d.company,d.role)));
+  stored.forEach(d=>{const key=companyRoleKeyLoose(d.company,d.role);if(key!=='|'&&!known.has(key)){DISCARDED_POSTINGS.push(d);known.add(key);}});
+}
 function gid(){return 'JOB_'+Date.now()+'_'+Math.floor(Math.random()*1000);}
 const PLACEHOLDER_JOB_IDS=new Set(['','linkedin','na','none','notprovided','pending','tbd','unknown']);
 function normKey(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'').trim();}
@@ -7269,8 +7301,8 @@ function companyRoleKeyLoose(company,role){return normKey(company)+'|'+normKey(r
 function discardNewJob(key){
   if(!confirm('¿Marcar que no vas a postular a esto? No se volverá a mostrar aquí ni en las alertas automáticas.'))return;
   const j=findOpportunity(key);
-  if(j){DISCARDED_POSTINGS.push({company:j.company,role:j.role,jobId:j.jobId||'',discardedAt:new Date().toISOString()});}
-  renderNewJobs();toast('No se mostrará más. Recuerda hacer clic en Guardar para que la automatización también lo respete.');
+  if(j){DISCARDED_POSTINGS.push({company:j.company,role:j.role,jobId:j.jobId||'',discardedAt:new Date().toISOString()});saveDiscarded();}
+  renderNewJobs();toast('Guardado en este navegador. Haz clic en Guardar para compartirlo con la automatización.');
 }
 function isAlreadyApplied(j){
   const company=normKey(canonicalCompanyName(j.company)),role=normKey(j.role);
@@ -7850,11 +7882,11 @@ function renderHome(){
   const alertStrip=document.getElementById('homeAlertStrip'),alertTitle=document.getElementById('homeAlertTitle'),alertText=document.getElementById('homeAlertText'),alertAction=document.getElementById('homeAlertAction');
   const alertParts=[];if(deadlines.length)alertParts.push(`${deadlines.length} cierre en 72 horas`);if(upcoming.length)alertParts.push(`${upcoming.length} entrevista próxima`);if(highFitNew.length)alertParts.push(`${highFitNew.length} vacante nueva con fit alto`);if(MAIL_AUDIT.action)alertParts.push(`${MAIL_AUDIT.action} correo con acción`);if(FAILED_SOURCES.length)alertParts.push(`${FAILED_SOURCES.length} fuentes fallidas`);if(feedAlerts.length)alertParts.push(`${feedAlerts.length} alerta automática`);
   if(alertStrip){const alertCount=deadlines.length+upcoming.length+highFitNew.length+MAIL_AUDIT.action+FAILED_SOURCES.length+feedAlerts.length;alertStrip.classList.toggle('visible',alertCount>0);if(alertTitle)alertTitle.textContent=`${alertCount} alertas requieren atención`;if(alertText)alertText.textContent=alertParts.join(' · ');if(alertAction){const target=deadlines.length||upcoming.length?'calendar':highFitNew.length?'new':MAIL_AUDIT.action?'mail':'sources';alertAction.setAttribute('onclick',`goPage('${target}')`);}}
-  const navMoreLive=document.getElementById('navMoreLive');
-  if(navMoreLive){
-    if(upcoming.length){const{j,iv}=upcoming[0];navMoreLive.innerHTML=`Próximo: <b>${esc(j.company)}</b> · ${esc(compactStamp(iv.date))}`;}
-    else if(deadlines.length){navMoreLive.innerHTML=`Próximo cierre: <b>${esc(deadlines[0].j.company)}</b> · ${esc(deadlines[0].days)}d`;}
-    else{navMoreLive.innerHTML=`<b>${active}</b> procesos activos · sin eventos próximos`;}
+  const navMoreLiveText=document.querySelector('#navMoreLive .nml-text');
+  if(navMoreLiveText){
+    if(upcoming.length){const{j,iv}=upcoming[0];navMoreLiveText.innerHTML=`Próximo: <b>${esc(j.company)}</b> · ${esc(compactStamp(iv.date))}`;}
+    else if(deadlines.length){navMoreLiveText.innerHTML=`Próximo cierre: <b>${esc(deadlines[0].j.company)}</b> · ${esc(deadlines[0].days)}d`;}
+    else{navMoreLiveText.innerHTML=`<b>${active}</b> procesos activos · sin eventos próximos`;}
   }
 }
 function renderInsights(){
@@ -8273,7 +8305,7 @@ if(S.editingId){const idx=S.jobs.findIndex(j=>j.id===S.editingId);if(idx!==-1){c
 
 // INIT
 function renderAll(){renderMetrics();renderHome();renderTable();renderHistory();renderCompanyRadar();renderNewJobs();renderInterest();renderCalendar();renderSources();renderMail();renderAI();renderJobs3AutomationFeed();}
-loadData();S.collapsed=new Set(S.jobs.map(j=>j.company));configureHistoryStatus();renderAll();updateUndoButton();initPage();initJobs3Chat();
+loadData();loadDiscarded();S.collapsed=new Set(S.jobs.map(j=>j.company));configureHistoryStatus();renderAll();updateUndoButton();initPage();initJobs3Chat();
 window.addEventListener('beforeunload',()=>save());
 document.addEventListener('keydown',e=>{
   const meta=e.metaKey||e.ctrlKey;
