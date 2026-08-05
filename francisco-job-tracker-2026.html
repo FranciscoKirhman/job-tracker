@@ -7819,7 +7819,15 @@ function bindSwipeCard(el){
     if(!SWIPE_STATE.dragging||e.pointerId!==SWIPE_STATE.pointerId)return;
     const dx=e.clientX-SWIPE_STATE.startX,dy=e.clientY-SWIPE_STATE.startY;
     if(!SWIPE_STATE.axisLocked){
-      if(Math.abs(dx)<6&&Math.abs(dy)<6)return;
+      // touch-action:pan-y on .swipe-stack lets native vertical scroll work
+      // inside .swipe-card-inner's own overflow -- but that means the browser
+      // can commit to a native pan before this axis-lock decision (and its
+      // preventDefault below) ever runs. A smaller threshold decides sooner,
+      // narrowing that race; it can't fully close it without giving up native
+      // scroll for the card's own text (touch-action:none on an ancestor
+      // overrides -- CSS takes the intersection, not the union -- so a
+      // descendant can't re-enable panning a parent already blocked).
+      if(Math.abs(dx)<4&&Math.abs(dy)<4)return;
       SWIPE_STATE.axisLocked=Math.abs(dx)>Math.abs(dy)?'x':'y';
     }
     if(SWIPE_STATE.axisLocked==='y')return;
