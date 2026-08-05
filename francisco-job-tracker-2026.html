@@ -690,7 +690,7 @@ html{scroll-padding-top:96px;}
   .nav-more-handle{display:block;width:36px;height:4px;border-radius:2px;background:var(--border2);margin:2px auto 8px;}
   .nml-text{font-size:.7rem;}
   .nav-more-tile{padding:10px 11px;}
-  body:has(.nav-more[open])::before{content:'';position:fixed;inset:0;background:rgba(4,5,9,.55);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:58;}
+  body:has(.nav-more[open])::before{content:'';position:fixed;inset:0;background:rgba(4,5,9,.6);z-index:58;pointer-events:none;}
   .home-alert-strip{grid-template-columns:36px minmax(0,1fr)}
   .home-alert-strip .home-go{grid-column:2;width:max-content}
   .jobs3-chat-launcher{bottom:calc(86px + env(safe-area-inset-bottom));}
