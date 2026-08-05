@@ -7937,7 +7937,7 @@ function calendarEvents(){
     if(j.deadline&&!['rejected','withdrawn'].includes(j.status))events.push({date:j.deadline,type:'deadline',label:`Cierre · ${j.company}`,detail:j.role,jobId:j.id});
     (j.interviews||[]).filter(iv=>iv.date).forEach((iv,i)=>events.push({date:iv.date,type:'interview',label:`Entrevista ${i+1} · ${j.company}`,detail:j.role,jobId:j.id}));
   });
-  NEW_JOB_RECOMMENDATIONS.forEach(j=>{const d=parseSpanishClosing(j.closing);if(d)events.push({date:isoDay(d),type:'deadline',label:`Cierre vacante · ${j.company}`,detail:j.role,opportunityKey:opportunityKey(j)});});
+  newJobsPool().forEach(j=>{const d=parseSpanishClosing(j.closing);if(d)events.push({date:isoDay(d),type:'deadline',label:`Cierre vacante · ${j.company}`,detail:j.role,opportunityKey:opportunityKey(j)});});
   return events.sort((a,b)=>a.date.localeCompare(b.date)||a.label.localeCompare(b.label,'es'));
 }
 function calendarAction(e){if(e.jobId)return `jumpToApplication(${JSON.stringify(e.jobId)})`;if(e.opportunityKey)return `focusNewJob(${JSON.stringify(e.opportunityKey)})`;return'';}
