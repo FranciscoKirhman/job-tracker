@@ -2610,7 +2610,7 @@ Inicio estimado: 06 de julio de 2026</div></div></div></td></tr><tr class="co-hd
     <div class="source-review-analysis inconclusive" id="sourceReviewAnalysis" aria-live="polite"><strong>Esperando evidencia</strong>Pega la página completa para revisar si muestra resultados, un cero explícito, una falla o evidencia insuficiente.</div>
     <div class="source-review-confirm">
       <div class="fg"><label>Estado que confirmas</label><select id="sourceReviewDecision" disabled=""><option value="inconclusive">Inconcluso</option><option value="open_results">Resultados visibles</option><option value="visible_zero">Cero visible con filtro correcto</option><option value="still_failed">Sigue fallando</option></select></div>
-      <div class="fg"><label>Nota manual opcional</label><input id="sourceReviewNote" type="text" placeholder="Ejemplo: Chile visible, 2 fichas y sin paginación"></div>
+      <div class="fg"><label>Nota manual opcional</label><input id="sourceReviewNote" type="text" placeholder="Ejemplo: Chile visible, 2 fichas y sin paginación" oninput="saveSourceReviewDraft()"></div>
     </div>
     <p class="source-review-boundary">El análisis usa todo el texto pegado. Al guardar conserva solo un resumen y un extracto local acotado. Esta revisión no modifica el ledger, no cambia la cobertura técnica y no convierte automáticamente una fuente fallida en cero.</p>
   </div>
@@ -7080,6 +7080,23 @@ const LINKEDIN_MAIL_SIGNALS=[
 const DEFAULT_JOBS=[];
 const S={jobs:[],collapsed:new Set(),openDetails:new Set(),sort:{f:'createdAt',d:'desc'},filters:{q:'',status:'',priority:'',company:'',scope:'active'},editingId:null};
 const NEW_FILTERS={q:'',company:'',lane:'',decision:'',fit:'all',sort:'recent'};
+const VIEW_STATE_KEY='jobs3_view_state_v1';
+function saveViewState(){try{localStorage.setItem(VIEW_STATE_KEY,JSON.stringify({filters:S.filters,sort:S.sort,collapsed:[...S.collapsed],newFilters:NEW_FILTERS}));}catch{}}
+function loadViewState(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(VIEW_STATE_KEY)||'null');
+    if(!saved)return;
+    if(saved.filters)Object.assign(S.filters,saved.filters);
+    if(saved.sort)Object.assign(S.sort,saved.sort);
+    if(Array.isArray(saved.collapsed))S.collapsed=new Set(saved.collapsed);
+    if(saved.newFilters)Object.assign(NEW_FILTERS,saved.newFilters);
+  }catch{}
+}
+function syncFilterInputsFromState(){
+  const setVal=(id,val)=>{const e=document.getElementById(id);if(e&&val!==undefined)e.value=val;};
+  setVal('fSearch',S.filters.q);setVal('fStatus',S.filters.status);setVal('fPriority',S.filters.priority);setVal('fCompany',S.filters.company);
+  setVal('newSearch',NEW_FILTERS.q);setVal('newCompany',NEW_FILTERS.company);setVal('newLane',NEW_FILTERS.lane);setVal('newDecision',NEW_FILTERS.decision);setVal('newSort',NEW_FILTERS.sort);
+}
 let CALENDAR_CURSOR=new Date();
 let cStatus=null,cTime=null,cFit=null,cFunnel=null,cFamily=null;
 const SK='fk_tracker_v5';
@@ -7087,6 +7104,16 @@ const SOURCE_REVIEW_KEY='jobs3_source_review_inputs_v1';
 const SOURCE_REVIEW_LABELS={open_results:'Resultados visibles',visible_zero:'Cero visible con filtro correcto',still_failed:'Sigue fallando',inconclusive:'Inconcluso'};
 let SOURCE_REVIEW_ACTIVE='';
 let SOURCE_REVIEW_ANALYSIS=null;
+const SOURCE_REVIEW_DRAFT_KEY='jobs3_source_review_draft_v1';
+function saveSourceReviewDraft(){
+  if(!SOURCE_REVIEW_ACTIVE)return;
+  try{
+    const text=document.getElementById('sourceReviewPaste')?.value||'',note=document.getElementById('sourceReviewNote')?.value||'';
+    if(!text.trim()&&!note.trim()){localStorage.removeItem(SOURCE_REVIEW_DRAFT_KEY);return;}
+    localStorage.setItem(SOURCE_REVIEW_DRAFT_KEY,JSON.stringify({source:SOURCE_REVIEW_ACTIVE,text,note}));
+  }catch{}
+}
+function clearSourceReviewDraft(){try{localStorage.removeItem(SOURCE_REVIEW_DRAFT_KEY);}catch{}}
 const STATUSES=['todo','applied','interview','offer','rejected','withdrawn'];
 const SLABELS={todo:'Por postular',applied:'Postulada',interview:'Entrevista',offer:'Oferta',rejected:'Rechazada',withdrawn:'Retirada'};
 const SCLASS={todo:'s-todo',applied:'s-applied',interview:'s-interview',offer:'s-offer',rejected:'s-rejected',withdrawn:'s-withdrawn'};
@@ -7307,18 +7334,26 @@ function openSourceReview(source){
   document.getElementById('sourceReviewTitle').textContent=`Revisión manual: ${source}`;
   document.getElementById('sourceReviewSubtitle').textContent=`Estado técnico actual: ${item.status} · revisada ${compactStamp(item.checked)}`;
   const link=document.getElementById('sourceReviewLink');link.href=safeHref(item.url)||'#';link.style.display=safeHref(item.url)?'inline-flex':'none';
-  document.getElementById('sourceReviewPaste').value='';document.getElementById('sourceReviewNote').value='';
+  let draftText='',draftNote='';
+  try{
+    const draft=JSON.parse(localStorage.getItem(SOURCE_REVIEW_DRAFT_KEY)||'null');
+    if(draft&&draft.source===source){draftText=draft.text||'';draftNote=draft.note||'';}
+  }catch{}
+  document.getElementById('sourceReviewPaste').value=draftText;document.getElementById('sourceReviewNote').value=draftNote;
   const decision=document.getElementById('sourceReviewDecision');decision.value='inconclusive';decision.disabled=true;
   const save=document.getElementById('sourceReviewSave');save.disabled=true;
   const result=document.getElementById('sourceReviewAnalysis');result.className='source-review-analysis inconclusive';result.innerHTML='<strong>Esperando evidencia</strong>Pega la página completa para revisar si muestra resultados, un cero explícito, una falla o evidencia insuficiente.';
-  updateSourceReviewMeta();document.getElementById('sourceReviewOverlay').classList.add('open');
+  updateSourceReviewMeta();
+  if(draftText.trim().length>=80)analyzeSourceReviewPaste();
+  document.getElementById('sourceReviewOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('sourceReviewPaste').focus(),120);
 }
-function closeSourceReview(){document.getElementById('sourceReviewOverlay').classList.remove('open');SOURCE_REVIEW_ACTIVE='';SOURCE_REVIEW_ANALYSIS=null;}
+function closeSourceReview(){document.getElementById('sourceReviewOverlay').classList.remove('open');SOURCE_REVIEW_ACTIVE='';SOURCE_REVIEW_ANALYSIS=null;clearSourceReviewDraft();}
 function updateSourceReviewMeta(){
   const text=document.getElementById('sourceReviewPaste').value||'',meta=document.getElementById('sourceReviewPasteMeta');
   meta.textContent=text.trim()?`${text.length.toLocaleString('es-CL')} caracteres pegados · vuelve a analizar si cambias el texto`:'Todavía no hay texto pegado.';
   document.getElementById('sourceReviewSave').disabled=true;document.getElementById('sourceReviewDecision').disabled=true;SOURCE_REVIEW_ANALYSIS=null;
+  saveSourceReviewDraft();
 }
 async function pasteSourceReviewClipboard(){
   try{const text=await navigator.clipboard.readText();if(!text)throw new Error('empty');document.getElementById('sourceReviewPaste').value=text;updateSourceReviewMeta();analyzeSourceReviewPaste();}
@@ -7684,6 +7719,7 @@ function renderNewJobs(){
   document.getElementById('internationalCount').textContent=`${international.length} vacante${international.length===1?'':'s'}`;
   document.getElementById('internationalList').innerHTML=international.length?international.map(j=>{const keyArg=JSON.stringify(opportunityKey(j)).replace(/</g,'\\u003c');return `<article class="weekly-fit-item"><div><b>${esc(j.company)} · ${esc(j.role)}</b><span>${esc(j.location)} · ${esc(j.decision)}</span></div><div><span class="fit-score ${fitClass(j.fit)}">Fit ${Number(j.fit).toFixed(1)}</span>${decisionScoreBadge(j)}<button class="home-go" style="margin-top:5px" onclick='focusNewJob(${keyArg})'>Ver</button></div></article>`;}).join(''):'<div class="compare-empty">Ninguna vacante nueva evaluada está fuera de Chile por ahora.</div>';
   renderSwipeStack();
+  saveViewState();
 }
 
 // SWIPE TRIAGE (Nuevas page) -- swipe-right saves to Por postular (importRecords,
@@ -8123,7 +8159,7 @@ function filesCell(j){
 }
 
 let _cos=[];
-function renderTable(){const js=getFiltered(),tb=document.getElementById('tBody');if(!js.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><p>No applications match. Try adjusting filters.</p></div></td></tr>';updateAppScopeUI(0);updateCoFilter();return;}const groups={};js.forEach(j=>{if(!groups[j.company])groups[j.company]=[];groups[j.company].push(j);});_cos=Object.keys(groups).sort();let html='';_cos.forEach((co,ci)=>{const cjs=groups[co],col=S.collapsed.has(co),sample=cjs[0];const sc={};cjs.forEach(j=>{sc[j.status]=(sc[j.status]||0)+1;});const pills=Object.entries(sc).map(([s,n])=>`<span class="sp ${SCLASS[s]}">${n} ${SLABELS[s]}</span>`).join('');
+function renderTable(){const js=getFiltered(),tb=document.getElementById('tBody');if(!js.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><p>No applications match. Try adjusting filters.</p></div></td></tr>';updateAppScopeUI(0);updateCoFilter();saveViewState();return;}const groups={};js.forEach(j=>{if(!groups[j.company])groups[j.company]=[];groups[j.company].push(j);});_cos=Object.keys(groups).sort();let html='';_cos.forEach((co,ci)=>{const cjs=groups[co],col=S.collapsed.has(co),sample=cjs[0];const sc={};cjs.forEach(j=>{sc[j.status]=(sc[j.status]||0)+1;});const pills=Object.entries(sc).map(([s,n])=>`<span class="sp ${SCLASS[s]}">${n} ${SLABELS[s]}</span>`).join('');
 html+=`<tr class="co-hdr" onclick="toggleCo(${ci})"><td colspan="10"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;"><div style="display:flex;align-items:center;"><span class="co-arrow ${col?'':'open'}">▶</span><span class="co-nm">${esc(co)}</span><span class="co-type">${esc(sample.companyType||'')}</span><span style="margin-left:8px;font-size:.64rem;color:var(--text3);">${cjs.length} app${cjs.length>1?'s':''}</span></div><div class="co-pills">${pills}</div></div></td></tr>`;
 cjs.forEach(j=>{const isOpen=S.openDetails.has(j.id);
 html+=`<tr class="j-row ${col?'hidden':''}" id="jr-${j.id}"><td><button class="ibtn ibtn-v" onclick="toggleDetail('${j.id}')" aria-label="Abrir detalle">${isOpen?'▴':'▾'}</button></td><td><span class="pbadge p-${j.priority}">${j.priority}</span></td><td><div style="font-weight:700;font-size:.83rem;">${esc(j.role)}</div><div style="font-size:.72rem;color:var(--text3);margin-top:1px;">${esc(j.location||'')}${j.location&&j.category?' · ':''}${esc(j.category||'')}</div></td><td><button class="sbadge ${SCLASS[j.status]}" onclick="openStatusEditor('${j.id}')" title="Actualizar estado con evidencia">${SLABELS[j.status]}</button></td><td>${stageCell(j)}</td><td>${fmtDate(j.appliedDate)}</td><td>${fmtDate(j.deadline)}${dlTag(j.deadline)}</td><td><span class="fscore ${fcls(j.fitScore)}">${j.fitScore?parseFloat(j.fitScore).toFixed(1):'—'}</span></td><td>${filesCell(j)}</td><td><div class="acts">${j.status==='todo'?`<button class="ibtn ibtn-a" onclick="quickApply('${j.id}')" title="Registrar postulación con evidencia">✓</button>`:''}<button class="ibtn ibtn-f" onclick="quickInterview('${j.id}')" title="Abrir formulario de entrevista">📅</button><button class="ibtn ibtn-e" onclick="openModal('${j.id}')" title="Editar detalles">✎</button><button class="ibtn ibtn-d" onclick="delJob('${j.id}')" title="Eliminar">✕</button></div></td></tr>`;
@@ -8131,7 +8167,7 @@ html+=`<tr class="d-row ${isOpen?'open':''} ${col?'hidden':''}" id="dr-${j.id}">
 <div class="d-meta">${j.jobId?`<div class="d-meta-item">Job ID: <span>${esc(j.jobId)}</span></div>`:''}${j.posted?`<div class="d-meta-item">Posted: <span>${fmtDate(j.posted)}</span></div>`:''}${j.replyDate?`<div class="d-meta-item">Reply: <span>${fmtDate(j.replyDate)}</span></div>`:''}${j.rejectedDate?`<div class="d-meta-item">Rejected: <span style="color:#f87171">${fmtDate(j.rejectedDate)}</span></div>`:''}${j.createdAt?`<div class="d-meta-item">Added: <span>${fmtDate(j.createdAt)}</span></div>`:''}</div>
 ${j.jobDescription?`<div class="d-notes"><h4>Job Description</h4><p>${esc(j.jobDescription)}</p></div>`:''}
 ${(j.strategicNotes||j.links)?`<div class="d-notes"><h4>Notes</h4>${j.strategicNotes?`<p>${esc(j.strategicNotes)}</p>`:''}${j.links?`<div class="d-link" style="margin-top:6px;white-space:pre-line;">${esc(j.links)}</div>`:''}</div>`:''}</div></td></tr>`;});});
-tb.innerHTML=html;updateAppScopeUI(js.length);updateCoFilter();}
+tb.innerHTML=html;updateAppScopeUI(js.length);updateCoFilter();saveViewState();}
 
 function ivTimeline(j){
   const ivs=(j.interviews||[]).filter(iv=>iv.date||iv.notes);
@@ -8485,7 +8521,7 @@ if(S.editingId){const idx=S.jobs.findIndex(j=>j.id===S.editingId);if(idx!==-1){c
 
 // INIT
 function renderAll(){renderMetrics();renderHome();renderTable();renderHistory();renderCompanyRadar();renderNewJobs();renderInterest();renderCalendar();renderSources();renderMail();renderAI();renderJobs3AutomationFeed();}
-loadData();loadDiscarded();S.collapsed=new Set(S.jobs.map(j=>j.company));configureHistoryStatus();renderAll();updateUndoButton();initPage();initJobs3Chat();
+loadData();loadDiscarded();S.collapsed=new Set(S.jobs.map(j=>j.company));loadViewState();syncFilterInputsFromState();configureHistoryStatus();renderAll();updateUndoButton();initPage();initJobs3Chat();
 window.addEventListener('beforeunload',()=>save());
 document.addEventListener('keydown',e=>{
   const meta=e.metaKey||e.ctrlKey;
