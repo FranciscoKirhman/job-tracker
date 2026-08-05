@@ -1,0 +1,66 @@
+name: Mobile sync
+
+# Triggered by a Cloudflare Worker (see docs/CLOUDFLARE_SYNC_SETUP.md) that
+# phone swipes POST to. The Worker holds the actual GitHub credential and
+# validates a shared secret from the app before forwarding here -- this
+# workflow never talks to the phone directly, only to GitHub's own
+# repository_dispatch event.
+on:
+  repository_dispatch:
+    types: [mobile_sync]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply mobile action
+        id: apply
+        env:
+          MS_ACTION: ${{ github.event.client_payload.action }}
+          MS_COMPANY: ${{ github.event.client_payload.company }}
+          MS_ROLE: ${{ github.event.client_payload.role }}
+          MS_JOB_ID: ${{ github.event.client_payload.jobId }}
+          MS_LOCATION: ${{ github.event.client_payload.location }}
+          MS_FIT_SCORE: ${{ github.event.client_payload.fitScore }}
+          MS_URL: ${{ github.event.client_payload.url }}
+          MS_REASON: ${{ github.event.client_payload.reason }}
+          MS_RISK: ${{ github.event.client_payload.risk }}
+        run: |
+          set +e
+          output=$(python3 tools/mobile_sync.py \
+            --tracker francisco-job-tracker-2026.html \
+            --action "$MS_ACTION" \
+            --company "$MS_COMPANY" \
+            --role "$MS_ROLE" \
+            --job-id "$MS_JOB_ID" \
+            --location "$MS_LOCATION" \
+            --fit-score "$MS_FIT_SCORE" \
+            --url "$MS_URL" \
+            --reason "$MS_REASON" \
+            --risk "$MS_RISK" 2>&1)
+          status=$?
+          echo "$output"
+          {
+            echo "message<<MSG_EOF"
+            echo "$output"
+            echo "MSG_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Commit tracker changes
+        if: steps.apply.outputs.status == '0'
+        env:
+          MS_ACTION: ${{ github.event.client_payload.action }}
+          MS_COMPANY: ${{ github.event.client_payload.company }}
+        run: |
+          git config user.name "jobs3-bot"
+          git config user.email "jobs3-bot@users.noreply.github.com"
+          git add francisco-job-tracker-2026.html
+          git diff --cached --quiet || git commit -m "Mobile sync: $MS_ACTION $MS_COMPANY"
+          git diff --cached --quiet || git push
