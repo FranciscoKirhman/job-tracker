@@ -2260,11 +2260,11 @@ Inicio estimado: 06 de julio de 2026</div></div></div></td></tr><tr class="co-hd
     <section class="report-hero">
       <div class="hero-kicker">Calendario Jobs3</div>
       <h2>Cierres, entrevistas y seguimientos en una sola vista.</h2>
-      <p>Los cierres e entrevistas provienen de fechas registradas. Los seguimientos son recordatorios sugeridos a los catorce días sin respuesta y no cambian el estado canónico.</p>
+      <p>Los cierres e entrevistas provienen de fechas registradas. "Procesos en silencio" cuenta postulaciones sin respuesta después del umbral configurado, sin cambiar el estado canónico.</p>
       <div class="hero-metrics">
         <div class="hero-metric"><b id="calendarDeadlineTotal">8</b><span>cierres registrados</span></div>
         <div class="hero-metric"><b id="calendarInterviewTotal">3</b><span>entrevistas registradas</span></div>
-        <div class="hero-metric"><b id="calendarFollowupTotal">20</b><span>seguimientos sugeridos</span></div>
+        <div class="hero-metric"><b id="calendarFollowupTotal">20</b><span>procesos en silencio</span></div>
         <div class="hero-metric"><b id="calendarUpcomingTotal">5</b><span>eventos próximos</span></div>
       </div>
     </section>
@@ -7841,14 +7841,14 @@ function renderCalendar(){
   const grid=document.getElementById('calendarGrid'),agenda=document.getElementById('calendarAgenda');if(!grid||!agenda)return;
   const events=calendarEvents(),todayKey=isoDay(new Date()),monthStart=new Date(CALENDAR_CURSOR.getFullYear(),CALENDAR_CURSOR.getMonth(),1,12),offset=(monthStart.getDay()+6)%7,gridStart=plusDays(monthStart,-offset);
   document.getElementById('calendarTitle').textContent=monthStart.toLocaleDateString('es-CL',{month:'long',year:'numeric'});
-  const deadlines=events.filter(x=>x.type==='deadline'),interviews=events.filter(x=>x.type==='interview'),followups=events.filter(x=>x.type==='followup'),upcoming=events.filter(x=>x.date>=todayKey);
-  document.getElementById('calendarDeadlineTotal').textContent=deadlines.length;document.getElementById('calendarInterviewTotal').textContent=interviews.length;document.getElementById('calendarFollowupTotal').textContent=followups.length;document.getElementById('calendarUpcomingTotal').textContent=upcoming.length;
+  const deadlines=events.filter(x=>x.type==='deadline'),interviews=events.filter(x=>x.type==='interview'),upcoming=events.filter(x=>x.date>=todayKey);
+  document.getElementById('calendarDeadlineTotal').textContent=deadlines.length;document.getElementById('calendarInterviewTotal').textContent=interviews.length;document.getElementById('calendarFollowupTotal').textContent=calcTiming().stale.length;document.getElementById('calendarUpcomingTotal').textContent=upcoming.length;
   const next30=events.filter(x=>x.date>=todayKey&&x.date<=isoDay(plusDays(new Date(),30))).length;document.getElementById('calendarNavCnt').textContent=next30;
   const weekdays=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="calendar-weekday">${x}</div>`).join('');
   let days='';for(let i=0;i<42;i++){const d=plusDays(gridStart,i),key=isoDay(d),dayEvents=events.filter(x=>x.date===key),out=d.getMonth()!==monthStart.getMonth();days+=`<div class="calendar-day ${out?'out':''} ${key===todayKey?'today':''}"><div class="calendar-number">${d.getDate()}</div><div class="calendar-events">${dayEvents.slice(0,3).map(e=>`<button class="calendar-event ${e.type}" onclick='${calendarAction(e)}' title="${esc(e.detail)}">${esc(e.label)}</button>`).join('')}${dayEvents.length>3?`<span class="source-time">+${dayEvents.length-3} más</span>`:''}</div></div>`;}
   grid.innerHTML=weekdays+days;
-  const agendaEvents=events.filter(x=>x.date>=todayKey||(x.type==='followup'&&x.date<todayKey)).sort((a,b)=>{const ao=a.date<todayKey?0:1,bo=b.date<todayKey?0:1;return ao-bo||a.date.localeCompare(b.date);}).slice(0,24);
-  agenda.innerHTML=agendaEvents.length?agendaEvents.map(e=>`<article class="calendar-agenda-item"><div class="calendar-date">${esc(e.date)}${e.date<todayKey?' · pendiente':''}</div><div><button class="job-jump" onclick='${calendarAction(e)}'>${esc(e.label)}</button><span>${esc(e.detail)}${e.suggested?' · recordatorio sugerido':''}</span></div><span class="decision-pill ${e.type==='deadline'?'decision-no':e.type==='interview'?'source-ok-badge':'decision-consider'}">${e.type==='deadline'?'Cierre':e.type==='interview'?'Entrevista':'Seguimiento'}</span></article>`).join(''):'<div class="empty"><p>No hay eventos próximos registrados.</p></div>';
+  const agendaEvents=events.filter(x=>x.date>=todayKey).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,24);
+  agenda.innerHTML=agendaEvents.length?agendaEvents.map(e=>`<article class="calendar-agenda-item"><div class="calendar-date">${esc(e.date)}</div><div><button class="job-jump" onclick='${calendarAction(e)}'>${esc(e.label)}</button><span>${esc(e.detail)}</span></div><span class="decision-pill ${e.type==='deadline'?'decision-no':'source-ok-badge'}">${e.type==='deadline'?'Cierre':'Entrevista'}</span></article>`).join(''):'<div class="empty"><p>No hay eventos próximos registrados.</p></div>';
 }
 
 // METRICS
