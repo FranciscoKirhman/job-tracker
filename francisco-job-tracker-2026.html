@@ -7401,7 +7401,9 @@ function cvEvidenceFor(j){
 const MOBILE_SYNC_URL='https://jobs3-whatsapp-relay.franckirhman.workers.dev/mobile-sync';
 const MOBILE_SYNC_SECRET='vIoBXWv0rcvTHB4S676S9TlSZzxccnIQQKwfxb7yNmE';
 function mobileSyncPush(action,j){
-  fetch(MOBILE_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json','X-App-Secret':MOBILE_SYNC_SECRET},body:JSON.stringify({action,company:j.company||'',role:j.role||'',jobId:j.jobId||'',location:j.location||'',fitScore:Number(j.fit)||0,url:j.url||'',reason:j.reason||'',risk:j.risk||''})}).catch(()=>{});
+  fetch(MOBILE_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json','X-App-Secret':MOBILE_SYNC_SECRET},body:JSON.stringify({action,company:j.company||'',role:j.role||'',jobId:j.jobId||'',location:j.location||'',fitScore:Number(j.fit)||0,url:j.url||'',reason:j.reason||'',risk:j.risk||''})})
+    .then(r=>{if(!r.ok)toast(`⚠ No se sincronizó con el repositorio: ${j.company}. El cambio quedó solo en este navegador.`);})
+    .catch(()=>{toast(`⚠ Sin conexión al sincronizar: ${j.company}. El cambio quedó solo en este navegador.`);});
 }
 function opportunityKey(j){return `${j.company}|${j.role}|${j.jobId||''}`;}
 function allComparableOpportunities(){return NEW_JOB_RECOMMENDATIONS.map(j=>({...j,firstSeen:j.firstSeen||'2026-08-02 11:30 America/Santiago',origin:'Nuevas'})).concat(ADJACENT_OPPORTUNITIES.map(j=>({...j,firstSeen:j.checked,closing:j.posted||'No publicada',origin:'Para ti'})));}
@@ -8163,6 +8165,12 @@ function undoLastAction(){
       renderAll();
     }else if(saved.type==='delete'){
       if(!saved.job)return;
+      const dupKey=companyRoleKeyLoose(saved.job.company,saved.job.role);
+      if(S.jobs.some(x=>companyRoleKeyLoose(x.company,x.role)===dupKey)){
+        localStorage.removeItem(CANONICAL_UNDO_KEY);updateUndoButton();
+        toast(`Ya hay una postulación para ${saved.job.company} · ${saved.job.role} — no se restauró para evitar un duplicado.`);
+        return;
+      }
       S.jobs.push(migrate(saved.job));
       save();
       mobileSyncPush('save',{company:saved.job.company,role:saved.job.role,jobId:saved.job.jobId,location:saved.job.location,fit:saved.job.fitScore,url:saved.job.links,reason:saved.job.jobDescription,risk:''});

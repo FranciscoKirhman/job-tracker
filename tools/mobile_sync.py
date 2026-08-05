@@ -11,8 +11,14 @@ so a mobile-synced action looks identical to one made through the app
 itself or the automated discovery pipeline. `restore` undoes a `discard`
 (removes the matching DISCARDED_POSTINGS entry) and `remove` undoes a
 `save` (removes the matching SAVED_DATA entry), both matched by the same
-company+role identity key -- this is how the app's "Deshacer" button
-reverses an action that already synced to the repo.
+company+role+jobId identity key -- this is how the app's "Deshacer" button
+reverses an action that already synced to the repo. jobId is part of the
+key (not just company+role) so that two genuinely separate postings or
+applications for the same role -- e.g. reapplying after a rejection --
+can't collide and cause a remove/restore to silently wipe the wrong one;
+this mirrors the same fix applied client-side to opportunityKey() after
+a real collision on a placeholder jobId caused a discard to hit the
+wrong of two Fraunhofer listings.
 """
 
 from __future__ import annotations
@@ -51,8 +57,8 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def identity_key(company: str, role: str) -> str:
-    return f"{normalize_key(company)}|{normalize_key(role)}"
+def identity_key(company: str, role: str, job_id: str = "") -> str:
+    return f"{normalize_key(company)}|{normalize_key(role)}|{normalize_key(job_id)}"
 
 
 def apply_discard(html: str, args: argparse.Namespace) -> tuple[str, str]:
@@ -60,8 +66,8 @@ def apply_discard(html: str, args: argparse.Namespace) -> tuple[str, str]:
     if not match:
         raise RuntimeError("DISCARDED_POSTINGS block not found in tracker")
     entries = json.loads(match.group(2))
-    key = identity_key(args.company, args.role)
-    if any(identity_key(e.get("company"), e.get("role")) == key for e in entries):
+    key = identity_key(args.company, args.role, args.job_id)
+    if any(identity_key(e.get("company"), e.get("role"), e.get("jobId", "")) == key for e in entries):
         return html, f"Already discarded, no change: {args.company} — {args.role}"
     entries.append(
         {
@@ -81,8 +87,8 @@ def apply_save(html: str, args: argparse.Namespace) -> tuple[str, str]:
     if not match:
         raise RuntimeError("SAVED_DATA block not found in tracker")
     jobs = json.loads(match.group(2))
-    key = identity_key(args.company, args.role)
-    if any(identity_key(j.get("company"), j.get("role")) == key for j in jobs):
+    key = identity_key(args.company, args.role, args.job_id)
+    if any(identity_key(j.get("company"), j.get("role"), j.get("jobId", "")) == key for j in jobs):
         return html, f"Already tracked, no change: {args.company} — {args.role}"
 
     fit_score = float(args.fit_score or 0)
@@ -130,8 +136,8 @@ def apply_restore(html: str, args: argparse.Namespace) -> tuple[str, str]:
     if not match:
         raise RuntimeError("DISCARDED_POSTINGS block not found in tracker")
     entries = json.loads(match.group(2))
-    key = identity_key(args.company, args.role)
-    remaining = [e for e in entries if identity_key(e.get("company"), e.get("role")) != key]
+    key = identity_key(args.company, args.role, args.job_id)
+    remaining = [e for e in entries if identity_key(e.get("company"), e.get("role"), e.get("jobId", "")) != key]
     if len(remaining) == len(entries):
         return html, f"Not discarded, no change: {args.company} — {args.role}"
     serialized = json.dumps(remaining, ensure_ascii=False, indent=2)
@@ -144,8 +150,8 @@ def apply_remove(html: str, args: argparse.Namespace) -> tuple[str, str]:
     if not match:
         raise RuntimeError("SAVED_DATA block not found in tracker")
     jobs = json.loads(match.group(2))
-    key = identity_key(args.company, args.role)
-    remaining = [j for j in jobs if identity_key(j.get("company"), j.get("role")) != key]
+    key = identity_key(args.company, args.role, args.job_id)
+    remaining = [j for j in jobs if identity_key(j.get("company"), j.get("role"), j.get("jobId", "")) != key]
     if len(remaining) == len(jobs):
         return html, f"Not tracked, no change: {args.company} — {args.role}"
     serialized = json.dumps(remaining, ensure_ascii=False, indent=2)
