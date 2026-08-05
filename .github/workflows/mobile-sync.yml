@@ -9,6 +9,16 @@ on:
   repository_dispatch:
     types: [mobile_sync]
 
+# Rapid consecutive swipes (no confirm dialog to slow them down anymore)
+# fire near-simultaneous repository_dispatch events. Without this, two runs
+# can both check out main, commit locally, and race on `git push` -- the
+# loser gets a plain "! [rejected] ... (fetch first)" and the swipe is
+# silently dropped. Serializing on one queue (not cancelling in-progress
+# runs) means every swipe still lands, just one push at a time.
+concurrency:
+  group: mobile-sync-push
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -64,7 +74,13 @@ jobs:
           git add francisco-job-tracker-2026.html
           if ! git diff --cached --quiet; then
             git commit -m "Mobile sync: $MS_ACTION $MS_COMPANY"
-            git push
+            for attempt in 1 2 3; do
+              if git push; then
+                break
+              fi
+              echo "Push rejected (attempt $attempt/3), rebasing onto latest main and retrying..."
+              git pull --rebase origin main
+            done
           else
             echo "Nothing to commit."
           fi

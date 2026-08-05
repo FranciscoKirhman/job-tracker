@@ -747,7 +747,6 @@ html{scroll-padding-top:96px;}
         <div class="nav-more-group">
           <div class="nav-more-group-label">Análisis</div>
           <div class="nav-more-group-items">
-            <button class="nav-more-tile" id="nav-interest" onclick="goPage('interest')"><span class="nmt-icon nmt-purple"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 3.5l2.5 5.6 6 .6-4.6 4 1.3 6-5.2-3.2-5.2 3.2 1.3-6-4.6-4 6-.6z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span><span class="nmt-label">Para ti</span><span class="nmt-count" id="interestNavCnt">2</span></button>
             <button class="nav-more-tile" id="nav-sources" onclick="goPage('sources')"><span class="nmt-icon nmt-purple"><svg viewBox="0 0 24 24" width="14" height="14"><path d="M4.5 4.7a14.8 14.8 0 0 1 14.8 14.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4.5 9.6a9.9 9.9 0 0 1 9.9 9.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="6" cy="18" r="1.9" fill="currentColor"/></svg></span><span class="nmt-label">Fuentes</span><span class="nmt-count" id="sourceNavCnt">6</span></button>
           </div>
         </div>
@@ -7203,8 +7202,8 @@ function goPage(p){
   const secondary=['history','companies','interest','sources','mail','ai'];
   if(!pages.includes(p))p='apps';
   pages.forEach(k=>{
-    document.getElementById('page-'+k).classList.toggle('active',k===p);
-    document.getElementById('nav-'+k).classList.toggle('on',k===p);
+    document.getElementById('page-'+k)?.classList.toggle('active',k===p);
+    document.getElementById('nav-'+k)?.classList.toggle('on',k===p);
   });
   const pageLabel=document.getElementById('currentPageLabel');
   if(pageLabel)pageLabel.textContent=labels[p]||'Jobs3';
@@ -7350,7 +7349,7 @@ const MOBILE_SYNC_SECRET='vIoBXWv0rcvTHB4S676S9TlSZzxccnIQQKwfxb7yNmE';
 function mobileSyncPush(action,j){
   fetch(MOBILE_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json','X-App-Secret':MOBILE_SYNC_SECRET},body:JSON.stringify({action,company:j.company||'',role:j.role||'',jobId:j.jobId||'',location:j.location||'',fitScore:Number(j.fit)||0,url:j.url||'',reason:j.reason||'',risk:j.risk||''})}).catch(()=>{});
 }
-function opportunityKey(j){return `${j.company}|${j.jobId||j.role}`;}
+function opportunityKey(j){return `${j.company}|${j.role}|${j.jobId||''}`;}
 function allComparableOpportunities(){return NEW_JOB_RECOMMENDATIONS.map(j=>({...j,firstSeen:j.firstSeen||'2026-08-02 11:30 America/Santiago',origin:'Nuevas'})).concat(ADJACENT_OPPORTUNITIES.map(j=>({...j,firstSeen:j.checked,closing:j.posted||'No publicada',origin:'Para ti'})));}
 function findOpportunity(key){return allComparableOpportunities().find(j=>opportunityKey(j)===key);}
 function discardedNewKeys(){return new Set(DISCARDED_POSTINGS.map(d=>companyRoleKeyLoose(d.company,d.role)));}
@@ -7471,7 +7470,6 @@ function renderCompanyRadar(){
 }
 function focusNewJob(key){
   const j=findOpportunity(key);if(!j)return;
-  if(j.origin==='Para ti'){goPage('interest');return;}
   goPage('new');NEW_FILTERS.q='';NEW_FILTERS.company='';NEW_FILTERS.lane='';NEW_FILTERS.decision='';NEW_FILTERS.fit='all';NEW_FILTERS.sort='fit';
   const q=document.getElementById('newSearch'),co=document.getElementById('newCompany'),ln=document.getElementById('newLane'),dc=document.getElementById('newDecision'),so=document.getElementById('newSort');if(q)q.value='';if(co)co.value='';if(ln)ln.value='';if(dc)dc.value='';if(so)so.value='fit';
   renderNewJobs();setTimeout(()=>{const group=document.getElementById('newco-'+normKey(j.company)),card=document.getElementById('newjob-'+normKey(opportunityKey(j)));if(group)group.open=true;if(card)card.open=true;setTimeout(()=>{if(card)card.scrollIntoView({behavior:'smooth',block:'center'});},60);},60);
@@ -7578,7 +7576,9 @@ function renderMail(){
 function newJobsPool(){
   const defaultFirstSeen='2026-08-02 11:30 America/Santiago';
   const discardedNewKeySet=discardedNewKeys();
-  return NEW_JOB_RECOMMENDATIONS.map(j=>({...j,firstSeen:j.firstSeen||defaultFirstSeen,origin:'Nuevas'})).filter(j=>!isAlreadyApplied(j)&&!discardedNewKeySet.has(companyRoleKeyLoose(j.company,j.role)));
+  const nuevas=NEW_JOB_RECOMMENDATIONS.map(j=>({...j,firstSeen:j.firstSeen||defaultFirstSeen,origin:'Nuevas'}));
+  const paraTi=ADJACENT_OPPORTUNITIES.map(j=>({...j,firstSeen:j.checked,closing:j.posted||'No publicada',origin:'Para ti'}));
+  return nuevas.concat(paraTi).filter(j=>!isAlreadyApplied(j)&&!discardedNewKeySet.has(companyRoleKeyLoose(j.company,j.role)));
 }
 function renderNewJobs(){
   const list=document.getElementById('newJobsList');if(!list)return;
@@ -7618,7 +7618,7 @@ function renderNewJobs(){
     return String(b[1][0].firstSeen).localeCompare(String(a[1][0].firstSeen))||String(a[0]).localeCompare(String(b[0]),'es');
   });
   const jobCard=j=>{const key=opportunityKey(j),keyArg=JSON.stringify(key).replace(/</g,'\\u003c');return `<details class="collapse-card ${fitBorderClass(j.fit)}" id="newjob-${normKey(key)}">
-    <summary><div class="collapse-title"><strong>${esc(j.role)}</strong><span>Primera detección ${esc(compactStamp(j.firstSeen))} · ID ${esc(j.jobId)} · ${esc(j.location)}</span></div><span class="fit-score ${fitClass(j.fit)}">Fit ${esc(Number(j.fit).toFixed(1))}</span>${decisionScoreBadge(j)}<span class="decision-pill decision-no">${esc(j.decision)}</span></summary>
+    <summary><div class="collapse-title"><strong>${esc(j.role)}</strong><span>Primera detección ${esc(compactStamp(j.firstSeen))} · ID ${esc(j.jobId)} · ${esc(j.location)}</span></div>${j.origin==='Para ti'?'<span class="decision-pill decision-consider">Para ti</span>':''}<span class="fit-score ${fitClass(j.fit)}">Fit ${esc(Number(j.fit).toFixed(1))}</span>${decisionScoreBadge(j)}<span class="decision-pill decision-no">${esc(j.decision)}</span></summary>
     <div class="collapse-body"><p><b>Empresa:</b> ${esc(j.company)}</p><p><b>Ruta:</b> ${esc(jobLane(j))}</p>${decisionBreakdownHtml(j)}<p><b>Puntaje de fit:</b> ${esc(fitLabel(j.fit))}</p><p><b>Primera detección:</b> ${esc(j.firstSeen)}</p><p><b>Cierre:</b> ${esc(j.closing)}</p><p><b>Razón a favor:</b> ${esc(j.reason)}</p><p><b>Evidencia del Master CV:</b> ${esc(cvEvidenceFor(j))}</p><p><b>Pared o riesgo:</b> ${esc(j.risk)}</p>${safeHref(j.url)?`<p><a class="history-link" href="${esc(j.url)}" target="_blank" rel="noreferrer">Abrir vacante oficial</a></p>`:''} <button class="compare-toggle" style="border-color:rgba(248,113,113,.3);color:#ffabab" onclick='discardNewJob(${keyArg})'>No postularé</button></div>
   </details>`;};
   list.innerHTML=companies.length?companies.map(([company,items])=>`<details class="collapse-card new-company-group" id="newco-${normKey(company)}">
@@ -7646,7 +7646,7 @@ function swipeCardHtml(j,isPeek){
   return `<article class="collapse-card ${fitBorderClass(j.fit)} swipe-card${isPeek?' swipe-card-peek':''}">
     <div class="swipe-card-inner">
       <div class="collapse-title"><strong>${esc(j.role)}</strong><span>${esc(j.company)} · ID ${esc(j.jobId)} · ${esc(j.location)}</span></div>
-      <div class="swipe-badges"><span class="fit-score ${fitClass(j.fit)}">Fit ${esc(Number(j.fit).toFixed(1))}</span>${decisionScoreBadge(j)}</div>
+      <div class="swipe-badges">${j.origin==='Para ti'?'<span class="decision-pill decision-consider">Para ti</span>':''}<span class="fit-score ${fitClass(j.fit)}">Fit ${esc(Number(j.fit).toFixed(1))}</span>${decisionScoreBadge(j)}</div>
       <p><b>Razón a favor:</b> ${esc(j.reason)}</p>
       <p><b>Pared o riesgo:</b> ${esc(j.risk)}</p>
       <div class="swipe-stamp swipe-stamp-like">GUARDAR</div>
@@ -7737,7 +7737,7 @@ function renderInterest(){
   const list=document.getElementById('interestJobsList');if(!list)return;
   const jobs=ADJACENT_OPPORTUNITIES.filter(j=>!isAlreadyApplied(j)).sort((a,b)=>String(b.checked).localeCompare(String(a.checked))||String(a.company).localeCompare(String(b.company),'es'));
   const high=jobs.filter(x=>+x.fit>=8),stretch=jobs.filter(x=>x.decision==='Stretch');
-  document.getElementById('interestNavCnt').textContent=jobs.length;
+  const interestNavCntEl=document.getElementById('interestNavCnt');if(interestNavCntEl)interestNavCntEl.textContent=jobs.length;
   document.getElementById('interestTotal').textContent=jobs.length;
   document.getElementById('interestHighTotal').textContent=high.length;
   document.getElementById('interestStretchTotal').textContent=stretch.length;
@@ -7777,7 +7777,6 @@ function calendarEvents(){
   S.jobs.forEach(j=>{
     if(j.deadline&&!['rejected','withdrawn'].includes(j.status))events.push({date:j.deadline,type:'deadline',label:`Cierre · ${j.company}`,detail:j.role,jobId:j.id});
     (j.interviews||[]).filter(iv=>iv.date).forEach((iv,i)=>events.push({date:iv.date,type:'interview',label:`Entrevista ${i+1} · ${j.company}`,detail:j.role,jobId:j.id}));
-    if(j.status==='applied'&&j.appliedDate&&!firstResponse(j)){const due=plusDays(new Date(j.appliedDate+'T12:00:00'),14);events.push({date:isoDay(due),type:'followup',label:`Seguimiento sugerido · ${j.company}`,detail:j.role,jobId:j.id,suggested:true});}
   });
   NEW_JOB_RECOMMENDATIONS.forEach(j=>{const d=parseSpanishClosing(j.closing);if(d)events.push({date:isoDay(d),type:'deadline',label:`Cierre vacante · ${j.company}`,detail:j.role,opportunityKey:opportunityKey(j)});});
   return events.sort((a,b)=>a.date.localeCompare(b.date)||a.label.localeCompare(b.label,'es'));
@@ -7917,12 +7916,12 @@ function renderHome(){
   if(deadlines.length)priorities.push({kind:'urgent',title:`${deadlines.length} cierre${deadlines.length===1?'':'s'} dentro de 72 horas`,note:deadlines.slice(0,2).map(x=>`${x.j.company}: ${x.j.role}`).join(' · '),page:'apps',cta:'Ver cierres'});
   if(upcoming.length)priorities.push({kind:'urgent',title:`${upcoming.length} entrevista${upcoming.length===1?'':'s'} próxima${upcoming.length===1?'':'s'}`,note:upcoming.slice(0,2).map(x=>`${x.j.company}: ${compactStamp(x.iv.date)}`).join(' · '),page:'apps',cta:'Preparar'});
   if(highFitNew.length)priorities.push({kind:'urgent',title:`${highFitNew.length} vacante${highFitNew.length===1?'':'s'} nueva${highFitNew.length===1?'':'s'} con fit alto`,note:highFitNew.slice(0,2).map(x=>`${x.company}: ${x.role} · ${Number(x.fit).toFixed(1)}`).join(' · '),page:'new',cta:'Revisar ahora'});
-  if(highFitAdjacent.length)priorities.push({kind:'urgent',title:`${highFitAdjacent.length} oportunidad${highFitAdjacent.length===1?'':'es'} adyacente${highFitAdjacent.length===1?'':'s'} con fit alto`,note:highFitAdjacent.slice(0,2).map(x=>`${x.company}: ${x.role} · ${Number(x.fit).toFixed(1)}`).join(' · '),page:'interest',cta:'Ver para ti'});
+  if(highFitAdjacent.length)priorities.push({kind:'urgent',title:`${highFitAdjacent.length} oportunidad${highFitAdjacent.length===1?'':'es'} adyacente${highFitAdjacent.length===1?'':'s'} con fit alto`,note:highFitAdjacent.slice(0,2).map(x=>`${x.company}: ${x.role} · ${Number(x.fit).toFixed(1)}`).join(' · '),page:'new',cta:'Ver para ti'});
   if(topDecisions.length)priorities.push({kind:'',title:'Las tres mejores decisiones ahora',note:topDecisions.map(x=>`${x.company}: ${x.role} · ${decisionScoreMeta(x).score}`).join(' · '),page:'new',cta:'Revisar'});
   if(FAILED_SOURCES.length)priorities.push({kind:'alert',title:`Cobertura incompleta: ${FAILED_SOURCES.length} fuentes fallidas`,note:`Cobertura confiable ${REVIEWED_SOURCES.length} de ${sourceTotal}. ${sourcePct}% requiere revisión manual y sigue siendo MONITOR INCIDENT.`,page:'sources',cta:'Ver alerta'});
   if(MAIL_AUDIT.newRelevant)priorities.push({kind:'alert',title:`${MAIL_AUDIT.newRelevant} correo${MAIL_AUDIT.newRelevant===1?'':'s'} laboral${MAIL_AUDIT.newRelevant===1?'':'es'} nuevo${MAIL_AUDIT.newRelevant===1?'':'s'}`,note:'Revisar si confirma una postulación, solicita una acción o cambia un proceso.',page:'mail',cta:'Ver correos'});
   if(NEW_JOB_RECOMMENDATIONS.length)priorities.push({kind:'',title:`${NEW_JOB_RECOMMENDATIONS.length} vacantes nuevas ya evaluadas`,note:'Agrupadas por empresa con razón a favor, recomendación y pared o riesgo exacto.',page:'new',cta:'Ver nuevas'});
-  if(ADJACENT_OPPORTUNITIES.length)priorities.push({kind:'',title:`${ADJACENT_OPPORTUNITIES.length} oportunidades adyacentes encontradas por Luna mid`,note:'Fuera de las rutas habituales, con fuente oficial, puntaje de fit y riesgo exacto.',page:'interest',cta:'Ver para ti'});
+  if(ADJACENT_OPPORTUNITIES.length)priorities.push({kind:'',title:`${ADJACENT_OPPORTUNITIES.length} oportunidades adyacentes encontradas por Luna mid`,note:'Fuera de las rutas habituales, con fuente oficial, puntaje de fit y riesgo exacto.',page:'new',cta:'Ver para ti'});
   if(timing.stale.length)priorities.push({kind:'',title:`${timing.stale.length} procesos sobre el umbral de silencio`,note:`Sin respuesta después de ${timing.ghostAt} días. Revisar seguimientos sugeridos sin cambiar el tracker automáticamente.`,page:'calendar',cta:'Ver calendario'});
   if(!priorities.length)priorities.push({kind:'',title:'No hay una acción urgente',note:'El tracker no muestra cierres cercanos, entrevistas próximas ni alertas nuevas.',page:'apps',cta:'Ver pipeline'});
   priorityEl.innerHTML=priorities.slice(0,8).map((p,i)=>`<article class="home-priority ${p.kind}"><div class="home-rank">${i+1}</div><div class="home-priority-main"><b>${esc(p.title)}</b><span>${esc(p.note)}</span></div><button class="home-go" onclick="goPage('${p.page}')">${esc(p.cta)}</button></article>`).join('');
