@@ -427,6 +427,16 @@ def find_existing(
     company_key = normalize_key(record["company"])
     role_key = normalize_key(record["role"])
     for index, job in enumerate(jobs):
+        existing_job_id = stable_job_id(str(job.get("jobId", "")))
+        if new_job_id and existing_job_id and existing_job_id != new_job_id:
+            # Both sides have a real, specific job ID and they disagree --
+            # trust that over company+role. Two postings for the same
+            # company+role with different job IDs are genuinely different
+            # (e.g. reapplying after a rejection to a reopened requisition),
+            # not the same application under a new label. Company+role
+            # fallback stays for the case that actually needs it: an
+            # existing record with no job ID on file yet.
+            continue
         if (
             normalize_key(str(job.get("company", ""))) == company_key
             and normalize_key(str(job.get("role", ""))) == role_key
