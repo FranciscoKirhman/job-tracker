@@ -15,6 +15,14 @@ on:
 permissions:
   contents: write
 
+# Guards only against this workflow overlapping itself (e.g. a manual
+# workflow_dispatch firing while a scheduled run is still mid-discovery) --
+# it does NOT serialize against whatsapp.yml/mobile-sync.yml/sync_local.sh,
+# which is what the retry loop in "Commit new postings" is for.
+concurrency:
+  group: discover-postings-push
+  cancel-in-progress: false
+
 jobs:
   discover:
     runs-on: ubuntu-latest
@@ -37,12 +45,56 @@ jobs:
 
       - name: Commit new postings
         run: |
+          set -e
           git config user.name "jobs3-bot"
           git config user.email "jobs3-bot@users.noreply.github.com"
           git add francisco-job-tracker-2026.html state/
           if ! git diff --cached --quiet; then
             git commit -m "Discover new postings (LinkedIn + Workday)"
-            git push
           else
             echo "No changes to commit."
+            exit 0
           fi
+          # whatsapp.yml, mobile-sync.yml, and the local sync_local.sh
+          # LaunchAgent can all land a push to main in the ~20s the
+          # discovery step above takes to run, so a bare `git push` here
+          # regularly loses this run's finds to a plain
+          # "! [rejected] ... (fetch first)" -- exactly what happened in
+          # run 31258858839 and 31111228428. See mobile-sync.yml and
+          # sync_local.sh for the same fix already applied to the other two
+          # writers to `main`.
+          #
+          # Unlike those two, discover_postings.py isn't safe to blindly
+          # rerun per retry attempt the way mobile_sync.py/
+          # sync_market_history.py are: it hits LinkedIn/Workday over the
+          # network (kept deliberately low-volume per the linkedin-search
+          # skill's own ToS caution, see the cron comment above) and, when
+          # it finds a high-fit posting, fires a WhatsApp alert as a side
+          # effect -- rerunning it on every retry could re-alert Francisco
+          # for the same posting. So instead of resetting to a fresh
+          # checkout and rerunning discovery, retry by rebasing this run's
+          # already-computed commit onto the latest main and re-pushing --
+          # safe because discovery only ran once, above. If a real conflict
+          # shows up (both writers touched the same regex-whole-replaced
+          # block, e.g. state/market_history_seen.json), abort the rebase
+          # and fail loudly rather than risk a bad merge or a duplicate
+          # alert -- the postings found this run aren't lost forever, the
+          # next scheduled run (every 4h) will rediscover them fresh.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt/3 -- another writer landed first."
+            if [ "$attempt" -eq 3 ]; then
+              break
+            fi
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort
+              echo "::error::Rebase conflict against origin/main -- another writer touched the same block. Not retrying further; this run's finds will be rediscovered on the next scheduled run."
+              exit 1
+            fi
+          done
+          echo "::error::All push attempts failed."
+          exit 1
