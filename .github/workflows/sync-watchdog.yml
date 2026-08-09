@@ -1,0 +1,51 @@
+name: Local sync watchdog
+
+# tools/sync_local.sh runs on a macOS LaunchAgent every 12h (see
+# docs/LOCAL_SYNC_SETUP.md) and now stamps a LAST_LOCAL_SYNC_AT heartbeat
+# into francisco-job-tracker-2026.html on every successful run -- including
+# no-op ones -- committing it with a "Local sync: ..." message either way.
+#
+# This exists because of a real incident (2026-08-05): macOS silently
+# blocked the LaunchAgent's bash process from even opening the script
+# (Full Disk Access / TCC protection on ~/Documents), so the script never
+# ran at all -- not once, for 5 days. That failure happens before a single
+# line of sync_local.sh executes, so nothing IN the script (error handling,
+# a local WhatsApp send, anything) could ever have caught it. The only way
+# to catch "the whole pipeline went silent" is from outside it: this
+# workflow checks GitHub's own commit history for a recent "Local sync:"
+# commit, from the cloud side, independent of whether the Mac is even
+# reachable.
+on:
+  schedule:
+    # Runs once a day; checks a 24h lookback below (two full 12h cycles),
+    # so a single skipped cycle (Mac asleep, no wifi, a long meeting) isn't
+    # enough to alert -- both of today's expected syncs missing is.
+    - cron: "23 18 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check whether local sync has landed a commit recently
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          count=$(gh api "repos/${{ github.repository }}/commits?per_page=30" \
+            --jq "[.[] | select(.commit.committer.date >= \"$since\") | select(.commit.message | startswith(\"Local sync:\"))] | length")
+          echo "Found $count local-sync commit(s) (heartbeat or real) in the last 24h."
+          echo "ran=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Flag the miss over WhatsApp
+        if: steps.check.outputs.ran == 'false'
+        run: |
+          echo "No local-sync commit in the last 24h -- flagging, not retrying (nothing to retry: this runs on Francisco's own Mac, not in CI)."
+          gh workflow run whatsapp.yml -f raw_message="⚠ El sync local (Mac) no ha corrido en 24h+. Revisa que el LaunchAgent esté activo (launchctl list | grep jobtracker) y state/sync_local.launchd.log por errores de permisos."
+        env:
+          GH_TOKEN: ${{ github.token }}

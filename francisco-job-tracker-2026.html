@@ -555,6 +555,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .header-context{display:flex;align-items:center;gap:7px;min-width:0;color:var(--text3);}
 .header-context strong{color:var(--text2);font-weight:720;}
 .header-context .context-separator{opacity:.45;}
+.sync-badge{display:inline-flex;align-items:center;gap:5px;}
+.sync-badge .sync-dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--amber);box-shadow:0 0 0 3px rgba(255,159,10,.12);}
+.sync-badge.ok .sync-dot{background:var(--green);box-shadow:0 0 0 3px rgba(48,209,88,.12);}
+.sync-badge.off .sync-dot{background:var(--red);box-shadow:0 0 0 3px rgba(255,69,58,.12);}
+.sync-badge.unknown .sync-dot{background:var(--text3);box-shadow:none;opacity:.5;}
 .hdr-r{align-items:center;}
 .action-menu,.nav-more{position:relative;}
 .action-menu>summary,.nav-more>summary{list-style:none;cursor:pointer;user-select:none;}
@@ -704,7 +709,7 @@ html{scroll-padding-top:96px;}
   <div class="hdr">
     <div class="hdr-l">
       <div class="hdr-title-row"><h1>Jobs3 Control Center</h1><span class="tracker-live">Tracker limpio</span></div>
-      <p class="header-context"><strong id="currentPageLabel">Inicio</strong><span class="context-separator">·</span><span id="headerAppCount">33 postulaciones canónicas</span></p>
+      <p class="header-context"><strong id="currentPageLabel">Inicio</strong><span class="context-separator">·</span><span id="headerAppCount">33 postulaciones canónicas</span><span class="context-separator">·</span><span class="sync-badge unknown" id="syncBadge" title="Última sincronización local con este tracker"><span class="sync-dot"></span><span id="syncBadgeText">Sync local: —</span></span></p>
     </div>
     <div class="hdr-r">
       <button class="btn btn-save" onclick="saveFile()"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>Guardar</button>
@@ -7091,6 +7096,9 @@ const DISCARDED_POSTINGS = [
   }
 ];
 // DISCARDED_END
+// LAST_LOCAL_SYNC_START
+const LAST_LOCAL_SYNC_AT = "2026-08-09T13:46:37Z";
+// LAST_LOCAL_SYNC_END
 const MAIL_AUDIT = {"checkedAt":"2026-08-02 20:20 America/Santiago","window":"Desde 2026-08-01 18:00 America/Santiago","newRelevant":0,"relevantTotal":3,"confirmed":1,"action":2};
 const MAIL_SIGNALS = [{"id": "19fb8d4f656a8684", "received": "2026-07-31 11:39 America/Santiago", "company": "Biogen", "role": "MSL Neuropsychiatry Chile", "jobId": "REQ23791", "kind": "confirmed", "label": "Envío confirmado", "subject": "Thank you for applying to Biogen", "sender": "Biogen Talent Acquisition", "summary": "", "tracker": "", "action": "", "url": "https://mail.google.com/mail/#all/19fb8d4f656a8684"}, {"id": "19fb87d3a20553e9", "received": "2026-07-31 10:04 America/Santiago", "company": "Abbott", "role": "Medical Scientific Liaison", "jobId": "31155935", "kind": "info", "label": "Acceso temporal", "subject": "Open Now: Finish your job application with Abbott", "sender": "Abbott Talent Acquisition", "summary": "", "tracker": "", "action": "", "url": "https://mail.google.com/mail/#all/19fb87d3a20553e9"}, {"id": "19fb847462e82908", "received": "2026-07-31 09:05 America/Santiago", "company": "Abbott", "role": "Medical Scientific Liaison Aesthetics", "jobId": "Sin ID estable en tracker", "kind": "action", "label": "Proceso incompleto", "subject": "Complete your application with Abbott", "sender": "Abbott Talent Acquisition", "summary": "", "tracker": "", "action": "", "url": "https://mail.google.com/mail/#all/19fb847462e82908"}];
 const NEW_JOB_RECOMMENDATIONS = [
@@ -8608,8 +8616,26 @@ const jd={company:co,companyType:gget('f_cotype').trim(),role,location:gget('f_l
 if(S.editingId){const idx=S.jobs.findIndex(j=>j.id===S.editingId);if(idx!==-1){const before=S.jobs[idx],oldCount=(before.interviews||[]).length,newRows=ivs.slice(oldCount);if(newRows.some(iv=>!iv.date||(!iv.type&&!iv.notes))){toast('Cada entrevista nueva necesita fecha y evidencia.');return;}rememberCanonicalChange(before,'Edición de postulación');S.jobs[idx]={...before,...jd,status:newRows.length&&!['rejected','withdrawn','offer'].includes(before.status)?'interview':before.status,replyDate:newRows.length&&!before.replyDate?newRows[0].date:jd.replyDate};}toast('Actualizada ✓');}else{jd.id=gid();jd.createdAt=today();jd.status='todo';S.jobs.push(jd);toast('Añadida como Por postular ✓');}save();closeModal();renderAll();updateUndoButton();}
 
 // INIT
+function renderSyncBadge(){
+  const el=document.getElementById('syncBadge'),textEl=document.getElementById('syncBadgeText');
+  if(!el||!textEl)return;
+  const raw=typeof LAST_LOCAL_SYNC_AT!=='undefined'?LAST_LOCAL_SYNC_AT:null;
+  const synced=raw?new Date(raw).getTime():NaN;
+  if(!raw||isNaN(synced)){el.className='sync-badge unknown';textEl.textContent='Sync local: sin datos';return;}
+  const ageMs=Date.now()-synced,hours=ageMs/3600000;
+  let cls='sync-badge';
+  if(hours<13)cls+=' ok';
+  else if(hours>=30)cls+=' off';
+  let label;
+  if(ageMs<0)label='recién';
+  else if(hours<1)label='hace '+Math.max(1,Math.round(ageMs/60000))+' min';
+  else if(hours<48)label='hace '+Math.round(hours)+'h';
+  else label='hace '+Math.round(hours/24)+'d';
+  el.className=cls;
+  textEl.textContent='Sync local: '+label;
+}
 function renderAll(){renderMetrics();renderHome();renderTable();renderHistory();renderCompanyRadar();renderNewJobs();renderInterest();renderCalendar();renderSources();renderMail();renderAI();renderJobs3AutomationFeed();}
-loadData();loadDiscarded();S.collapsed=new Set(S.jobs.map(j=>j.company));loadViewState();syncFilterInputsFromState();configureHistoryStatus();renderAll();updateUndoButton();initPage();initJobs3Chat();
+loadData();loadDiscarded();S.collapsed=new Set(S.jobs.map(j=>j.company));loadViewState();syncFilterInputsFromState();configureHistoryStatus();renderAll();updateUndoButton();initPage();initJobs3Chat();renderSyncBadge();setInterval(renderSyncBadge,60000);
 window.addEventListener('beforeunload',()=>save());
 document.addEventListener('keydown',e=>{
   const meta=e.metaKey||e.ctrlKey;

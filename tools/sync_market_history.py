@@ -22,6 +22,7 @@ import json
 import re
 import sys
 import unicodedata
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,9 @@ from typing import Any
 MARKET_HISTORY_PATTERN = re.compile(r"(const MARKET_HISTORY = )(\[.*?\])(;)", re.S)
 DISCARDED_PATTERN = re.compile(
     r"(// DISCARDED_START\s*\nconst DISCARDED_POSTINGS\s*=\s*)(\[[\s\S]*?\])(\s*;\s*\n// DISCARDED_END)"
+)
+LAST_LOCAL_SYNC_PATTERN = re.compile(
+    r"(// LAST_LOCAL_SYNC_START\s*\nconst LAST_LOCAL_SYNC_AT = )(\"[^\"]*\")(;\s*\n// LAST_LOCAL_SYNC_END)"
 )
 
 
@@ -194,6 +198,39 @@ def sync_tracked_identities(local_html: str, state_path: Path) -> tuple[bool, in
     return True, len(merged) - len(existing)
 
 
+def stamp_last_local_sync(html: str, now_iso: str) -> str:
+    """Stamp LAST_LOCAL_SYNC_AT into a tracker's HTML, inserting the marker
+    block once if it's not there yet (older tracker copies won't have it).
+
+    Called on every successful sync -- including ones where nothing else
+    changed -- so it's an honest "a sync attempt reached this point at T"
+    heartbeat, not just "something changed at T". This is what the
+    tracker's own freshness dot and .github/workflows/sync-watchdog.yml
+    both read: a real sync that finds nothing new should still prove the
+    pipeline is alive, exactly the gap that let the 2026-08-05 Full Disk
+    Access block go undetected for 5 days (no data changes to notice, and
+    no heartbeat existed to notice their absence either).
+    """
+    match = LAST_LOCAL_SYNC_PATTERN.search(html)
+    if match:
+        return html[: match.start(2)] + f'"{now_iso}"' + html[match.end(2) :]
+    # First run against a tracker copy that doesn't have the block yet --
+    # insert it right after DISCARDED_END, alongside the other metadata
+    # markers (TRACKER_DATA_*, DISCARDED_*) that already live inline in the
+    # same <script> block rather than as separate <script> tags.
+    anchor = "// DISCARDED_END"
+    idx = html.find(anchor)
+    if idx == -1:
+        return html
+    insert_at = idx + len(anchor)
+    block = (
+        "\n// LAST_LOCAL_SYNC_START\n"
+        f'const LAST_LOCAL_SYNC_AT = "{now_iso}";\n'
+        "// LAST_LOCAL_SYNC_END"
+    )
+    return html[:insert_at] + block + html[insert_at:]
+
+
 def main() -> int:
     args = parse_args()
 
@@ -249,6 +286,18 @@ def main() -> int:
             print(f"Synced discarded postings: {len(merged_d)} total.")
             repo_changed = repo_changed or d_repo_changed
 
+    now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    local_current = args.local.read_text(encoding="utf-8")
+    args.local.write_text(stamp_last_local_sync(local_current, now_iso), encoding="utf-8")
+    repo_current = args.repo.read_text(encoding="utf-8")
+    args.repo.write_text(stamp_last_local_sync(repo_current, now_iso), encoding="utf-8")
+    print(f"Stamped LAST_LOCAL_SYNC_AT={now_iso} in both copies.")
+
+    # REPO_CHANGED reflects real MARKET_HISTORY/DISCARDED_POSTINGS/tracked-
+    # identities content only, not the heartbeat stamp above (which always
+    # changes) -- sync_local.sh reads this line to pick a "real update" vs.
+    # "heartbeat, nothing new" commit message, so it stays a meaningful
+    # distinction in git history even though every run now pushes something.
     print(f"REPO_CHANGED={'1' if repo_changed else '0'}")
     return 0
 

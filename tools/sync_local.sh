@@ -20,8 +20,8 @@ cd "$REPO_DIR"
 # anything here the way an ephemeral CI checkout safely could. If there's
 # already uncommitted state sitting in the tree when this fires, skip the
 # cycle entirely rather than risk mixing it into an automated commit or
-# clobbering it; the next scheduled run (30 min later) picks up cleanly
-# once it's gone.
+# clobbering it; the next scheduled run (12h later) picks up cleanly once
+# it's gone.
 if [ -n "$(git status --porcelain)" ]; then
   echo "Uncommitted changes present in $REPO_DIR -- skipping this cycle."
   exit 0
@@ -41,17 +41,31 @@ git pull --quiet origin main
 # when the underlying edits don't actually clash -- see mobile-sync.yml's
 # own comments for the same lesson learned there).
 for attempt in 1 2 3; do
-  python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html"
+  sync_output=$(python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html")
+  echo "$sync_output"
 
+  # sync_market_history.py now stamps LAST_LOCAL_SYNC_AT into
+  # francisco-job-tracker-2026.html on every run, including no-op ones, so
+  # this diff is essentially never empty anymore -- that's intentional: a
+  # sync that ran and found nothing new should still push a heartbeat,
+  # otherwise a silent failure (script never even starting -- see the
+  # 2026-08-05 Full Disk Access incident, docs/LOCAL_SYNC_SETUP.md) is
+  # indistinguishable from a quiet week with no new postings.
   if git diff --quiet -- francisco-job-tracker-2026.html state/tracked_identities.json 2>/dev/null; then
-    echo "No repo changes."
+    echo "No repo changes (unexpected now that every run stamps a heartbeat -- investigate if this recurs)."
     exit 0
   fi
 
+  if echo "$sync_output" | grep -q "^REPO_CHANGED=1"; then
+    commit_msg="Local sync: MARKET_HISTORY/DISCARDED_POSTINGS updated from local tracker"
+  else
+    commit_msg="Local sync: heartbeat, no data changes"
+  fi
+
   git add francisco-job-tracker-2026.html state/tracked_identities.json
-  git commit --quiet -m "Sync MARKET_HISTORY + tracked identities from local tracker"
+  git commit --quiet -m "$commit_msg"
   if git push --quiet origin main; then
-    echo "Pushed update on attempt $attempt."
+    echo "Pushed on attempt $attempt: $commit_msg"
     exit 0
   fi
 
@@ -61,5 +75,17 @@ for attempt in 1 2 3; do
   git pull --quiet origin main
 done
 
-echo "All push attempts failed after 3 tries -- giving up this cycle, will retry in 30 minutes."
+echo "All push attempts failed after 3 tries -- giving up this cycle, will retry in 12 hours."
+# Best-effort immediate alert for THIS failure class (the script ran, but
+# git push exhausted its retries) -- a different, narrower thing than the
+# fully-silent "bash itself never started" failure mode (2026-08-05's TCC/
+# Full Disk Access block), which can't reach this point at all since the
+# script never runs; that class is instead caught from the cloud side by
+# .github/workflows/sync-watchdog.yml checking for a stale heartbeat.
+# `gh` already carries the 'workflow' scope locally (same auth used for git
+# push), so this reuses the existing whatsapp.yml path rather than needing
+# separate WhatsApp credentials stored on this machine.
+gh workflow run whatsapp.yml --repo FranciscoKirhman/job-tracker \
+  -f raw_message="⚠ Sync local (Mac) falló tras 3 intentos de push. Ver state/sync_local.log." \
+  || echo "Could not send failure alert via gh (gh workflow run itself failed)."
 exit 1

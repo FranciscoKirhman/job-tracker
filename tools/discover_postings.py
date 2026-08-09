@@ -51,23 +51,24 @@ SANTIAGO_TZ = ZoneInfo("America/Santiago")
 def last_local_sync_line() -> str:
     """'Ultima sync local: ...' line for WhatsApp messages, so Francisco can
     tell from the message itself whether the data reflects his latest local
-    edits. Derived from the most recent commit touching
-    state/tracked_identities.json, since that file is written exclusively by
-    tools/sync_local.sh's local<->repo merge (see docs/LOCAL_SYNC_SETUP.md) --
-    its last-commit timestamp is an unambiguous proxy for "when did
-    Francisco's local tracker last reach this repo", including no-op syncs
-    where nothing had changed (a real sync attempt with no delta still
-    confirms freshness). Uses the GitHub API rather than local `git log` so
-    it works regardless of the calling workflow's checkout depth. Returns ""
-    (caller omits the line) if `gh` isn't available/authenticated or no sync
-    has landed yet -- a missing nice-to-have shouldn't fail the whole digest.
+    edits. Derived from the most recent commit whose message starts with
+    "Local sync:" -- tools/sync_local.sh (via sync_market_history.py's
+    stamp_last_local_sync()) commits one on EVERY successful run, including
+    no-op ones where nothing changed, so this is an honest "a sync attempt
+    landed at T" heartbeat rather than "something changed at T". Same
+    signal the tracker UI's freshness dot and sync-watchdog.yml read, kept
+    in sync deliberately -- see docs/LOCAL_SYNC_SETUP.md. Uses the GitHub
+    API rather than local `git log` so it works regardless of the calling
+    workflow's checkout depth. Returns "" (caller omits the line) if `gh`
+    isn't available/authenticated or no sync has landed yet -- a missing
+    nice-to-have shouldn't fail the whole digest.
     """
     try:
         result = subprocess.run(
             [
                 "gh", "api",
-                f"repos/{REPO_SLUG}/commits?path=state/tracked_identities.json&per_page=1",
-                "--jq", ".[0].commit.committer.date",
+                f"repos/{REPO_SLUG}/commits?per_page=30",
+                "--jq", '[.[] | select(.commit.message | startswith("Local sync:"))][0].commit.committer.date // ""',
             ],
             capture_output=True, text=True, timeout=15, check=True,
         )
