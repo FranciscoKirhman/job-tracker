@@ -33,6 +33,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from send_whatsapp import main as send_whatsapp_main  # noqa: E402
@@ -43,6 +44,50 @@ STATE_PATH = REPO_ROOT / "state" / "market_history_seen.json"
 SYNCED_TRACKED_PATH = REPO_ROOT / "state" / "tracked_identities.json"
 LINKEDIN_CLI = REPO_ROOT / "tools" / "linkedin-search" / "cli" / "src" / "cli.ts"
 MARKET_HISTORY_PATTERN = re.compile(r"(const MARKET_HISTORY = )(\[.*?\])(;)", re.S)
+REPO_SLUG = "FranciscoKirhman/job-tracker"
+SANTIAGO_TZ = ZoneInfo("America/Santiago")
+
+
+def last_local_sync_line() -> str:
+    """'Ultima sync local: ...' line for WhatsApp messages, so Francisco can
+    tell from the message itself whether the data reflects his latest local
+    edits. Derived from the most recent commit touching
+    state/tracked_identities.json, since that file is written exclusively by
+    tools/sync_local.sh's local<->repo merge (see docs/LOCAL_SYNC_SETUP.md) --
+    its last-commit timestamp is an unambiguous proxy for "when did
+    Francisco's local tracker last reach this repo", including no-op syncs
+    where nothing had changed (a real sync attempt with no delta still
+    confirms freshness). Uses the GitHub API rather than local `git log` so
+    it works regardless of the calling workflow's checkout depth. Returns ""
+    (caller omits the line) if `gh` isn't available/authenticated or no sync
+    has landed yet -- a missing nice-to-have shouldn't fail the whole digest.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "gh", "api",
+                f"repos/{REPO_SLUG}/commits?path=state/tracked_identities.json&per_page=1",
+                "--jq", ".[0].commit.committer.date",
+            ],
+            capture_output=True, text=True, timeout=15, check=True,
+        )
+        iso = result.stdout.strip()
+        if not iso:
+            return ""
+        synced_at = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except Exception:
+        return ""
+
+    local = synced_at.astimezone(SANTIAGO_TZ)
+    age_seconds = (datetime.now(timezone.utc) - synced_at).total_seconds()
+    hours = age_seconds / 3600
+    if hours < 1:
+        age_text = f"hace {max(1, int(age_seconds // 60))} min"
+    elif hours < 48:
+        age_text = f"hace {hours:.0f}h"
+    else:
+        age_text = f"hace {hours / 24:.0f}d"
+    return f"Última sync local: {local.strftime('%Y-%m-%d %H:%M')} ({age_text})"
 
 # Kept short deliberately -- "keep volume low" per the linkedin-search skill's
 # own ToS caution. Derived from the category values already present in
@@ -493,6 +538,10 @@ def main() -> int:
         lines = [f"Alerta: {len(high_fit)} puesto(s) nuevo(s) de alto fit, agregados a Por postular:"]
         for entry, score in high_fit[:5]:
             lines.append(f"- {entry['company']}: {entry['title']} (fit {score:.0f}/10) {entry['url']}")
+        sync_line = last_local_sync_line()
+        if sync_line:
+            lines.append("")
+            lines.append(sync_line)
         sys.argv = ["send_whatsapp.py", "\n".join(lines)]
         send_whatsapp_main()
 

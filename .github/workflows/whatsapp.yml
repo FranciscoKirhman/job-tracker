@@ -62,6 +62,11 @@ jobs:
         env:
           RAW_MESSAGE: ${{ github.event.inputs.raw_message }}
           CMD_TEXT: ${{ steps.cmd.outputs.text }}
+          # last_local_sync_line() (discover_postings.py) shells out to
+          # `gh api` to look up the last local-sync commit for the digest's
+          # "Última sync local" line -- needs a token for that, same as
+          # watchdog.yml's own gh api check.
+          GH_TOKEN: ${{ github.token }}
         run: |
           set +e
           if [ -n "$RAW_MESSAGE" ]; then

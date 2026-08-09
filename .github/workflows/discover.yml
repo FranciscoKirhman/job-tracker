@@ -41,6 +41,10 @@ jobs:
           WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
           WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
           WHATSAPP_TO: ${{ secrets.WHATSAPP_TO }}
+          # last_local_sync_line() shells out to `gh api` for the alert's
+          # "Última sync local" line -- needs a token for that, same as
+          # watchdog.yml's own gh api check.
+          GH_TOKEN: ${{ github.token }}
         run: python3 tools/discover_postings.py
 
       - name: Commit new postings

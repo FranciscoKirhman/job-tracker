@@ -62,6 +62,7 @@ from discover_postings import (  # noqa: E402
     already_tracked,
     compute_fit,
     identity_keys_from_records,
+    last_local_sync_line,
     read_discarded_postings,
     tracked_identity_keys,
 )
@@ -271,6 +272,9 @@ def pipeline_digest(tracker: Path) -> str:
         ", ".join(f"{stage}: {count}" for stage, count in sorted(stages.items())),
         f"{context['recordCount']} total across {context['companyCount']} companies.",
     ]
+    sync_line = last_local_sync_line()
+    if sync_line:
+        lines.append(sync_line)
 
     today = date.today().isoformat()
     upcoming = sorted(
