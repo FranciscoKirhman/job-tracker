@@ -9,7 +9,7 @@ could clobber those changes. MARKET_HISTORY is pure discovery metadata
 union in both directions.
 
 Usage:
-    python3 sync_market_history.py --local <path> --repo <path>
+    python3 sync_market_history.py --local <path> --repo <path> [--heartbeat]
 
 Writes the merged array back into BOTH files (only if it actually changed
 for that file) and prints a one-line summary.
@@ -46,6 +46,11 @@ def parse_args() -> argparse.Namespace:
         help="Where to write the local machine's tracked-application identity "
         "keys, read-only input for the cloud side's already-tracked checks. "
         "Defaults to state/tracked_identities.json next to --repo.",
+    )
+    parser.add_argument(
+        "--heartbeat",
+        action="store_true",
+        help="Stamp LAST_LOCAL_SYNC_AT after a successful sync. Use this for a periodic health heartbeat; actual data changes are merged regardless.",
     )
     return parser.parse_args()
 
@@ -286,18 +291,20 @@ def main() -> int:
             print(f"Synced discarded postings: {len(merged_d)} total.")
             repo_changed = repo_changed or d_repo_changed
 
-    now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-    local_current = args.local.read_text(encoding="utf-8")
-    args.local.write_text(stamp_last_local_sync(local_current, now_iso), encoding="utf-8")
-    repo_current = args.repo.read_text(encoding="utf-8")
-    args.repo.write_text(stamp_last_local_sync(repo_current, now_iso), encoding="utf-8")
-    print(f"Stamped LAST_LOCAL_SYNC_AT={now_iso} in both copies.")
+    if args.heartbeat:
+        now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        local_current = args.local.read_text(encoding="utf-8")
+        args.local.write_text(stamp_last_local_sync(local_current, now_iso), encoding="utf-8")
+        repo_current = args.repo.read_text(encoding="utf-8")
+        args.repo.write_text(stamp_last_local_sync(repo_current, now_iso), encoding="utf-8")
+        print(f"Stamped LAST_LOCAL_SYNC_AT={now_iso} in both copies.")
+    else:
+        print("Skipped heartbeat stamp; no periodic heartbeat is due.")
 
     # REPO_CHANGED reflects real MARKET_HISTORY/DISCARDED_POSTINGS/tracked-
-    # identities content only, not the heartbeat stamp above (which always
-    # changes) -- sync_local.sh reads this line to pick a "real update" vs.
-    # "heartbeat, nothing new" commit message, so it stays a meaningful
-    # distinction in git history even though every run now pushes something.
+    # identities content only, not the optional heartbeat stamp --
+    # sync_local.sh reads this line to distinguish real updates from a
+    # periodic quiet heartbeat.
     print(f"REPO_CHANGED={'1' if repo_changed else '0'}")
     return 0
 

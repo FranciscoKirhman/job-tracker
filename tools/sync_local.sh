@@ -7,6 +7,7 @@ set -euo pipefail
 REPO_DIR="/Users/franciscokirhman/Documents/Career/job-tracker-repo"
 LOCAL_TRACKER="/Users/franciscokirhman/Documents/francisco-job-tracker-2026.html"
 LOG_FILE="$REPO_DIR/state/sync_local.log"
+HEARTBEAT_INTERVAL_SECONDS=14400
 
 mkdir -p "$REPO_DIR/state"
 exec >> "$LOG_FILE" 2>&1
@@ -20,7 +21,7 @@ cd "$REPO_DIR"
 # anything here the way an ephemeral CI checkout safely could. If there's
 # already uncommitted state sitting in the tree when this fires, skip the
 # cycle entirely rather than risk mixing it into an automated commit or
-# clobbering it; the next scheduled run (12h later) picks up cleanly once
+# clobbering it; the next scheduled run picks up cleanly once
 # it's gone.
 if [ -n "$(git status --porcelain)" ]; then
   echo "Uncommitted changes present in $REPO_DIR -- skipping this cycle."
@@ -40,19 +41,22 @@ git pull --quiet origin main
 # blocks whole, so two commits touching them rarely rebase cleanly even
 # when the underlying edits don't actually clash -- see mobile-sync.yml's
 # own comments for the same lesson learned there).
+last_heartbeat_epoch=$(git log -1 --format=%ct --grep='^Local sync:' || true)
+now_epoch=$(date +%s)
+heartbeat_args=()
+if [ -z "$last_heartbeat_epoch" ] || [ $((now_epoch - last_heartbeat_epoch)) -ge "$HEARTBEAT_INTERVAL_SECONDS" ]; then
+  heartbeat_args=(--heartbeat)
+fi
+
 for attempt in 1 2 3; do
-  sync_output=$(python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html")
+  sync_output=$(python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html" "${heartbeat_args[@]}")
   echo "$sync_output"
 
-  # sync_market_history.py now stamps LAST_LOCAL_SYNC_AT into
-  # francisco-job-tracker-2026.html on every run, including no-op ones, so
-  # this diff is essentially never empty anymore -- that's intentional: a
-  # sync that ran and found nothing new should still push a heartbeat,
-  # otherwise a silent failure (script never even starting -- see the
-  # 2026-08-05 Full Disk Access incident, docs/LOCAL_SYNC_SETUP.md) is
-  # indistinguishable from a quiet week with no new postings.
+  # Actual data changes are pushed immediately. Quiet cycles stamp and push a
+  # health heartbeat at most every four hours, which still exposes a silent
+  # launch failure without creating a commit every hour.
   if git diff --quiet -- francisco-job-tracker-2026.html state/tracked_identities.json 2>/dev/null; then
-    echo "No repo changes (unexpected now that every run stamps a heartbeat -- investigate if this recurs)."
+    echo "No repo changes and no heartbeat is due."
     exit 0
   fi
 
@@ -75,7 +79,7 @@ for attempt in 1 2 3; do
   git pull --quiet origin main
 done
 
-echo "All push attempts failed after 3 tries -- giving up this cycle, will retry in 12 hours."
+echo "All push attempts failed after 3 tries -- giving up this cycle, will retry on the next hourly run."
 # Best-effort immediate alert for THIS failure class (the script ran, but
 # git push exhausted its retries) -- a different, narrower thing than the
 # fully-silent "bash itself never started" failure mode (2026-08-05's TCC/

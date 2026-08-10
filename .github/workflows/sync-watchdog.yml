@@ -1,9 +1,9 @@
 name: Local sync watchdog
 
-# tools/sync_local.sh runs on a macOS LaunchAgent every 12h (see
-# docs/LOCAL_SYNC_SETUP.md) and now stamps a LAST_LOCAL_SYNC_AT heartbeat
-# into francisco-job-tracker-2026.html on every successful run -- including
-# no-op ones -- committing it with a "Local sync: ..." message either way.
+# tools/sync_local.sh runs hourly on a macOS LaunchAgent (see
+# docs/LOCAL_SYNC_SETUP.md). Real updates push immediately; quiet runs stamp
+# LAST_LOCAL_SYNC_AT at most every four hours, committing a "Local sync: ..."
+# heartbeat that demonstrates the pipeline is alive without hourly churn.
 #
 # This exists because of a real incident (2026-08-05): macOS silently
 # blocked the LaunchAgent's bash process from even opening the script

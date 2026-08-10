@@ -30,12 +30,13 @@ never the actual application records.
 ## How it runs
 
 A macOS LaunchAgent (`~/Library/LaunchAgents/com.francisco.jobtracker-sync.plist`)
-runs `tools/sync_local.sh` at 08:25 and 20:25 America/Santiago, with an
-additional catch up run when the agent loads:
+runs `tools/sync_local.sh` every hour while the Mac is running, with an
+additional catch up run when the agent loads. Real changes are pushed
+immediately; quiet runs publish a health heartbeat at most every four hours:
 
 1. `git pull` the repo
 2. `tools/sync_market_history.py` merges `MARKET_HISTORY` between the local file and the repo's copy, writing the union back to both
-3. Stamps a `LAST_LOCAL_SYNC_AT` heartbeat timestamp into both copies of the tracker -- on **every** run, including ones where nothing else changed. A sync that ran and found nothing new is different information from a sync that never ran at all, and only the heartbeat can tell them apart (see the incident below).
+3. Stamps a `LAST_LOCAL_SYNC_AT` heartbeat timestamp into both copies every four hours at most when no data changed. A sync that ran and found nothing new is different information from a sync that never ran at all, and the periodic heartbeat preserves that distinction without creating a commit every hour.
 4. Commits and pushes -- `"Local sync: MARKET_HISTORY/DISCARDED_POSTINGS updated from local tracker"` if there was a real data change, `"Local sync: heartbeat, no data changes"` otherwise.
 
 Logs: `state/sync_local.log` (the script's own log) and
