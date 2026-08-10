@@ -49,7 +49,11 @@ if [ -z "$last_heartbeat_epoch" ] || [ $((now_epoch - last_heartbeat_epoch)) -ge
 fi
 
 for attempt in 1 2 3; do
-  sync_output=$(python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html" "${heartbeat_args[@]}")
+  if [ "${#heartbeat_args[@]}" -gt 0 ]; then
+    sync_output=$(python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html" --heartbeat)
+  else
+    sync_output=$(python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html")
+  fi
   echo "$sync_output"
 
   # Actual data changes are pushed immediately. Quiet cycles stamp and push a
