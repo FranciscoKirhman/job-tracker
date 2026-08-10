@@ -30,7 +30,8 @@ never the actual application records.
 ## How it runs
 
 A macOS LaunchAgent (`~/Library/LaunchAgents/com.francisco.jobtracker-sync.plist`)
-runs `tools/sync_local.sh` every 12 hours:
+runs `tools/sync_local.sh` at 08:25 and 20:25 America/Santiago, with an
+additional catch up run when the agent loads:
 
 1. `git pull` the repo
 2. `tools/sync_market_history.py` merges `MARKET_HISTORY` between the local file and the repo's copy, writing the union back to both
