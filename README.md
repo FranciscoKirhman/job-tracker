@@ -11,6 +11,7 @@ A self-contained job application tracker, plus the CLI tooling that keeps it upd
 - **`backups/`** — timestamped tracker snapshots written before each update (gitignored; local safety net, not synced).
 - **`tools/whatsapp_command.py`** + **`tools/send_whatsapp.py`** — parse a short WhatsApp message (`pipeline`, `update: <company> | <status>`) and send replies via the Meta Cloud API.
 - **`.github/workflows/whatsapp.yml`** — scheduled + on-demand GitHub Actions workflow that runs the above and commits tracker changes back.
+- **`tools/check_openai_usage_resets.py`** + **`.github/workflows/openai-usage-reset-watch.yml`** — hourly read-only check of official OpenAI Developer Community sources; newly identified ChatGPT Work/Codex reset announcements use the existing WhatsApp secrets and sender path.
 - **`cloudflare-worker/`** — always-on relay that receives your WhatsApp replies (GitHub Actions can't host a webhook) and forwards them to the workflow. See `docs/WHATSAPP_SETUP.md`.
 - **`tools/mobile_sync.py`** + **`.github/workflows/mobile-sync.yml`** — the same Cloudflare Worker also bridges phone swipes (discard/save from the "Nuevas" page, and their undo) into the repo, since the static app has no backend of its own to write to. See `docs/CLOUDFLARE_SYNC_SETUP.md`.
 - **`tools/discover_postings.py`** + **`tools/linkedin-search/`** — finds new job postings (LinkedIn + Workday, no LLM calls) and adds them to `MARKET_HISTORY`, alerting immediately over WhatsApp for high-fit matches. See `docs/JOB_DISCOVERY.md`.
