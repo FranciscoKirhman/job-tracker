@@ -20,6 +20,11 @@ on:
         description: "Send this exact text as a WhatsApp message instead of running a command (admin use, e.g. a one-off note)"
         required: false
         default: ""
+      force_send:
+        description: "Bypass same-day daily-digest deduplication"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -57,8 +62,41 @@ jobs:
             echo "CMD_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Check daily digest gate
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_COMMAND: ${{ github.event.inputs.command }}
+          RAW_MESSAGE: ${{ github.event.inputs.raw_message }}
+          FORCE_SEND: ${{ github.event.inputs.force_send }}
+        run: |
+          set -e
+          today=$(TZ=America/Santiago date +%F)
+          is_daily=false
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            is_daily=true
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -z "$RAW_MESSAGE" ] && [ "${INPUT_COMMAND:-pipeline}" = "pipeline" ]; then
+            is_daily=true
+          fi
+
+          last_date=""
+          if [ -f state/whatsapp_daily_digest.json ]; then
+            last_date=$(python3 -c 'import json; print(json.load(open("state/whatsapp_daily_digest.json")).get("date", ""))')
+          fi
+
+          skip=false
+          if [ "$is_daily" = "true" ] && [ "$FORCE_SEND" != "true" ] && [ "$last_date" = "$today" ]; then
+            skip=true
+            echo "Daily digest already accepted on $today; skipping duplicate send."
+          fi
+
+          echo "today=$today" >> "$GITHUB_OUTPUT"
+          echo "is_daily=$is_daily" >> "$GITHUB_OUTPUT"
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
       - name: Run command against the tracker
         id: run
+        if: steps.gate.outputs.skip != 'true'
         env:
           RAW_MESSAGE: ${{ github.event.inputs.raw_message }}
           CMD_TEXT: ${{ steps.cmd.outputs.text }}
@@ -87,6 +125,7 @@ jobs:
           exit 0
 
       - name: Send WhatsApp reply
+        if: steps.gate.outputs.skip != 'true'
         env:
           WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
           WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
@@ -94,8 +133,34 @@ jobs:
           REPLY_TEXT: ${{ steps.run.outputs.reply }}
         run: python3 tools/send_whatsapp.py "$REPLY_TEXT"
 
+      - name: Record daily digest delivery
+        if: steps.gate.outputs.skip != 'true' && steps.gate.outputs.is_daily == 'true'
+        env:
+          DIGEST_DATE: ${{ steps.gate.outputs.today }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          record = {
+              "date": os.environ["DIGEST_DATE"],
+              "runId": int(os.environ["RUN_ID"]),
+              "acceptedAt": datetime.now(timezone.utc).isoformat(),
+              "source": "schedule" if os.environ["EVENT_NAME"] == "schedule" else "manual_pipeline",
+          }
+          path = Path("state/whatsapp_daily_digest.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          payload = json.dumps(record, indent=2) + "\n"
+          path.write_text(payload, encoding="utf-8")
+          Path("/tmp/whatsapp_daily_digest.json").write_text(payload, encoding="utf-8")
+          PY
+
       - name: Commit tracker changes
-        if: steps.run.outputs.status == '0'
+        if: steps.gate.outputs.skip != 'true' && steps.run.outputs.status == '0'
         env:
           RAW_MESSAGE: ${{ github.event.inputs.raw_message }}
           CMD_TEXT: ${{ steps.cmd.outputs.text }}
@@ -156,6 +221,9 @@ jobs:
             if [ "$status" -ne 0 ]; then
               echo "::error::whatsapp_command.py failed on retry (exit $status) -- not a push race, not retrying further."
               exit "$status"
+            fi
+            if [ -f /tmp/whatsapp_daily_digest.json ]; then
+              cp /tmp/whatsapp_daily_digest.json state/whatsapp_daily_digest.json
             fi
             git add francisco-job-tracker-2026.html state/
             if git diff --cached --quiet; then

@@ -3,20 +3,25 @@ name: Digest watchdog
 # GitHub's scheduled-workflow cron is best-effort: it can be delayed or
 # silently skipped under load (documented behavior, most likely for crons
 # landing exactly on the hour -- see whatsapp.yml's schedule comment). This
-# runs a few hours after the expected daily digest and checks whether it
-# actually fired. If not, it retries the digest itself and says so in the
-# message, instead of the miss going unnoticed until someone asks why no
-# message arrived.
+# runs twice after the expected daily digest and checks the committed
+# acceptance marker. If the primary cron was delayed or dropped, the first
+# available watchdog run triggers one catch-up. The digest workflow itself
+# suppresses a delayed duplicate after that catch-up lands.
 
 on:
   schedule:
-    # ~11:00 Santiago time, a generous ~3h buffer after the 08:07 digest.
-    - cron: "0 15 * * *"
+    # ~08:47 and ~09:47 Santiago time after the 08:07 primary digest.
+    - cron: "47 12 * * *"
+    - cron: "47 13 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: read
   actions: write
+
+concurrency:
+  group: whatsapp-digest-watchdog
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -26,32 +31,24 @@ jobs:
 
       - name: Check whether today's digest actually went out
         id: check
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          # Two bugs fixed here after the 2026-08-09 missed-cron incident:
-          # 1. event=schedule-only missed manual catch-up runs (workflow_dispatch,
-          #    e.g. this watchdog's own retry, or a manual `gh workflow run` while
-          #    debugging) -- those runs DO deliver the digest to Francisco, so a
-          #    same-day scheduled miss immediately followed by a manual send was
-          #    still flagged as "didn't run", producing a redundant duplicate.
-          # 2. status=completed alone counts a FAILED run as "ran" (e.g. a real
-          #    Meta API error, like the recipient-not-allowed error seen during
-          #    initial test-number setup on 2026-08-04) -- that's exactly the
-          #    kind of failure this watchdog exists to catch, so it must require
-          #    conclusion=success, not just status=completed.
-          since=$(date -u -d '20 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-          count=$(gh api "repos/${{ github.repository }}/actions/workflows/whatsapp.yml/runs?status=completed&per_page=30" \
-            --jq "[.workflow_runs[] | select(.created_at >= \"$since\" and .conclusion == \"success\" and (.event == \"schedule\" or .event == \"workflow_dispatch\"))] | length")
-          echo "Found $count successful scheduled/manual digest run(s) in the last 20h."
-          echo "ran=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          set -e
+          today=$(TZ=America/Santiago date +%F)
+          last_date=""
+          if [ -f state/whatsapp_daily_digest.json ]; then
+            last_date=$(python3 -c 'import json; print(json.load(open("state/whatsapp_daily_digest.json")).get("date", ""))')
+          fi
+          delivered=false
+          if [ "$last_date" = "$today" ]; then
+            delivered=true
+          fi
+          echo "Today in Santiago: $today; recorded digest date: ${last_date:-none}."
+          echo "delivered=$delivered" >> "$GITHUB_OUTPUT"
 
-      - name: Retry the digest and flag the miss
-        if: steps.check.outputs.ran == 'false'
+      - name: Retry the digest
+        if: steps.check.outputs.delivered == 'false'
         run: |
-          echo "No scheduled digest found in the last 20h -- triggering a catch-up run."
-          gh workflow run whatsapp.yml -f raw_message="⚠ El digest programado de hoy no se ejecutó a tiempo (falla conocida de GitHub Actions con crons en punto de hora). Reintentando ahora."
-          sleep 5
+          echo "No accepted digest recorded for today -- triggering one catch-up run."
           gh workflow run whatsapp.yml -f command=pipeline
         env:
           GH_TOKEN: ${{ github.token }}
