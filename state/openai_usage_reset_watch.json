@@ -1,0 +1,25 @@
+{
+  "initialized": true,
+  "pending": {},
+  "seen": {
+    "community-post:1850335": {
+      "excerpt": "Just saw that following a brief Codex outage the rate limits have been reset: https://x.com/thsottiaux/status/1986166501435711936 x.com https://x.com/thsottiaux/status/1986166501435711936 Tibo https://x.com/thsottiaux/status/1986166501435711936 @thsottiaux Codex outage resolved. We suffered a min...",
+      "key": "community-post:1850335",
+      "official_post": "https://x.com/thsottiaux/status/1986166501435711936",
+      "published_at": "2025-11-05T21:15:01.939Z",
+      "source": "OpenAI Developer Community search: Codex rate limit reset",
+      "title": "Pro plan: hit 5-hour limit twice (in 2h and 1.5h) and nearly exhausted weekly cap in 1 day after today’s update",
+      "url": "https://community.openai.com/t/1364782"
+    },
+    "community-post:1927392": {
+      "excerpt": "In case you are still wondering what to do on Sunday, building projects with Codex is an option. The next rate limit reset has already been announced for Monday. https://x.com/thsottiaux/status/2086188036493344823 x.com https://x.com/thsottiaux/status/2086188036493344823 Tibo https://x.com/thsott...",
+      "key": "community-post:1927392",
+      "official_post": "https://x.com/thsottiaux/status/2086188036493344823",
+      "published_at": "2026-08-08T22:23:14.736Z",
+      "source": "OpenAI Developer Community search: ChatGPT Work usage limit reset",
+      "title": "Codex rate limits reset for all paid plans on August 9 and again on Monday",
+      "url": "https://community.openai.com/t/1389643"
+    }
+  },
+  "version": 1
+}
