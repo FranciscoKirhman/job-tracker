@@ -73,6 +73,7 @@ from js_literal import read_flat_array, write_flat_array  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = REPO_ROOT / "state" / "market_history_seen.json"
 SYNCED_TRACKED_PATH = REPO_ROOT / "state" / "tracked_identities.json"
+MONITOR_SUMMARY_PATH = REPO_ROOT / "state" / "chile_monitor_summary.json"
 TRACKER_URL = "https://franciscokirhman.github.io/job-tracker/francisco-job-tracker-2026.html"
 MARKET_HISTORY_PATTERN = re.compile(r"const MARKET_HISTORY = (\[.*?\]);", re.S)
 VERIFIED_STATUSES = {"open"}
@@ -287,11 +288,8 @@ def pipeline_digest(tracker: Path) -> str:
     )[:5]
 
     _postings_text, verified_count, unverified_count = new_postings_section(tracker)
-    _failed_text, failed_count = failed_sources_summary(tracker)
-
     discovery_count = verified_count + unverified_count
     lines.append(f"Discovery items to review: {discovery_count}")
-    lines.append(f"Coverage issues pending: {failed_count}")
 
     if upcoming:
         next_job = upcoming[0]
@@ -303,6 +301,20 @@ def pipeline_digest(tracker: Path) -> str:
     monitor_line = last_monitor_line()
     if monitor_line:
         lines.append(monitor_line)
+    if MONITOR_SUMMARY_PATH.exists():
+        monitor = json.loads(MONITOR_SUMMARY_PATH.read_text(encoding="utf-8"))
+        checked = datetime.fromisoformat(monitor["latestMonitorChecked"]).astimezone(SANTIAGO_TZ)
+        lines.append(f"Official portal monitor: {checked.strftime('%d %b %Y, %H:%M')} Chile")
+        lines.append(
+            "Retrieval tries: "
+            f"{monitor['totalAttempts']} total | "
+            f"{monitor['inventoryAttempts']} inventory + {monitor['recoveryAttempts']} recovery"
+        )
+        lines.append(
+            "Official coverage: "
+            f"{monitor['comparable']} of {monitor['configuredSources']} comparable | "
+            f"{monitor['unresolved']} unresolved"
+        )
 
     lines.append("")
     lines.append("Open tracker:")

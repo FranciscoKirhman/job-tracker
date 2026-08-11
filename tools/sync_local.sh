@@ -7,6 +7,8 @@ set -euo pipefail
 REPO_DIR="/Users/franciscokirhman/Documents/Career/job-tracker-repo"
 LOCAL_TRACKER="/Users/franciscokirhman/Documents/francisco-job-tracker-2026.html"
 LOG_FILE="$REPO_DIR/state/sync_local.log"
+REPORTS_DIR="/Users/franciscokirhman/Documents/Codex/2026-07-24/s/outputs/chile_careers_reports"
+MONITOR_SUMMARY="$REPO_DIR/state/chile_monitor_summary.json"
 HEARTBEAT_INTERVAL_SECONDS=14400
 
 mkdir -p "$REPO_DIR/state"
@@ -29,6 +31,11 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 git pull --quiet origin main
+
+# Export the newest append-only inventory and recovery evidence for the
+# cloud-hosted 08:00 WhatsApp digest. This records attempt counts and coverage
+# without copying or mutating the source reports.
+python3 tools/build_monitor_summary.py --reports-dir "$REPORTS_DIR" --output "$MONITOR_SUMMARY"
 
 # mobile-sync.yml (GitHub Actions) can also be pushing to this same repo at
 # any moment -- rapid phone swipes fire it repeatedly. A single git push
@@ -59,7 +66,7 @@ for attempt in 1 2 3; do
   # Actual data changes are pushed immediately. Quiet cycles stamp and push a
   # health heartbeat at most every four hours, which still exposes a silent
   # launch failure without creating a commit every hour.
-  if git diff --quiet -- francisco-job-tracker-2026.html state/tracked_identities.json 2>/dev/null; then
+  if git diff --quiet -- francisco-job-tracker-2026.html state/tracked_identities.json state/chile_monitor_summary.json 2>/dev/null; then
     echo "No repo changes and no heartbeat is due."
     exit 0
   fi
@@ -70,7 +77,7 @@ for attempt in 1 2 3; do
     commit_msg="Local sync: heartbeat, no data changes"
   fi
 
-  git add francisco-job-tracker-2026.html state/tracked_identities.json
+  git add francisco-job-tracker-2026.html state/tracked_identities.json state/chile_monitor_summary.json
   git commit --quiet -m "$commit_msg"
   if git push --quiet origin main; then
     echo "Pushed on attempt $attempt: $commit_msg"
@@ -79,8 +86,9 @@ for attempt in 1 2 3; do
 
   echo "Push rejected on attempt $attempt/3 -- another writer (likely mobile-sync) landed first. Retrying from a fresh pull..."
   git reset --quiet HEAD~1
-  git checkout --quiet -- francisco-job-tracker-2026.html state/tracked_identities.json
+  git checkout --quiet -- francisco-job-tracker-2026.html state/tracked_identities.json state/chile_monitor_summary.json
   git pull --quiet origin main
+  python3 tools/build_monitor_summary.py --reports-dir "$REPORTS_DIR" --output "$MONITOR_SUMMARY"
 done
 
 echo "All push attempts failed after 3 tries -- giving up this cycle, will retry on the next hourly run."

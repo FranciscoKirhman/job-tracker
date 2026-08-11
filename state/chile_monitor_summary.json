@@ -1,0 +1,21 @@
+{
+  "updatedAt": "2026-08-11T09:30:29.276079-04:00",
+  "inventoryReport": "2026-08-11_0002_America-Santiago.md",
+  "inventoryChecked": "2026-08-11T00:02:00-04:00",
+  "recoveryReport": "2026-08-11_0131_America-Santiago.md",
+  "recoveryChecked": "2026-08-11T01:31:00-04:00",
+  "latestMonitorChecked": "2026-08-11T01:31:00-04:00",
+  "configuredSources": 25,
+  "inventoryAttempts": 2,
+  "recoveryAttempts": 25,
+  "totalAttempts": 27,
+  "retrieved": 1,
+  "confirmedZero": 1,
+  "comparable": 2,
+  "unresolved": 23,
+  "attemptEvidence": {
+    "initialSourceAttempts": 1,
+    "inventoryRetries": 1,
+    "recoverySourceAttempts": 25
+  }
+}
