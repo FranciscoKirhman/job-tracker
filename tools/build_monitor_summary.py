@@ -271,7 +271,18 @@ def main() -> int:
     args.output.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     for tracker in args.tracker:
         embed_summary(tracker, summary)
-    print(json.dumps(summary))
+    print(
+        json.dumps(
+            {
+                "monitorChecked": summary["latestMonitorChecked"],
+                "configured": summary["configuredSources"],
+                "comparable": summary["comparable"],
+                "unresolved": summary["unresolved"],
+                "totalAttempts": summary["totalAttempts"],
+                "trackersUpdated": len(args.tracker),
+            }
+        )
+    )
     return 0
 
 
