@@ -50,6 +50,11 @@ validates quoted `@thsottiaux` status links through X's public oEmbed metadata
 before accepting them. It is therefore an official-source signal monitor, not
 a guarantee that every social post will be indexed immediately.
 
+The hourly Luna research automation submits direct official X discoveries to
+this same workflow using `official_url` and `raw_message`. Both the scheduled
+Community scan and Luna therefore share one pending/sent state and deduplicate
+by the verified official status URL before WhatsApp delivery.
+
 ## 3. Cloudflare Worker (for receiving your replies)
 
 1. Create a free account at [cloudflare.com](https://cloudflare.com) if needed.

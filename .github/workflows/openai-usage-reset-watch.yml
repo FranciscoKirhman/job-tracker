@@ -8,7 +8,24 @@ on:
     # GitHub scheduled workflows are best-effort; the offset avoids the most
     # congested exact-hour boundary while still checking hourly.
     - cron: "17 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      official_url:
+        description: "Verified official X status URL found by Luna (optional)"
+        required: false
+        default: ""
+      title:
+        description: "Short event title for a Luna finding"
+        required: false
+        default: ""
+      published_at:
+        description: "Official event timestamp, preferably ISO 8601"
+        required: false
+        default: ""
+      raw_message:
+        description: "Luna's Spanish WhatsApp report"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -25,7 +42,21 @@ jobs:
 
       - name: Check official OpenAI sources
         id: scan
-        run: python3 tools/check_openai_usage_resets.py
+        env:
+          INGEST_URL: ${{ github.event.inputs.official_url }}
+          INGEST_TITLE: ${{ github.event.inputs.title }}
+          INGEST_PUBLISHED_AT: ${{ github.event.inputs.published_at }}
+          INGEST_MESSAGE: ${{ github.event.inputs.raw_message }}
+        run: |
+          if [ -n "$INGEST_URL" ]; then
+            python3 tools/check_openai_usage_resets.py \
+              --ingest-url "$INGEST_URL" \
+              --ingest-title "$INGEST_TITLE" \
+              --ingest-published-at "$INGEST_PUBLISHED_AT" \
+              --ingest-message "$INGEST_MESSAGE"
+          else
+            python3 tools/check_openai_usage_resets.py
+          fi
 
       # Commit pending state before sending. If Meta is temporarily down,
       # the pending record remains and the next scheduled run retries it.

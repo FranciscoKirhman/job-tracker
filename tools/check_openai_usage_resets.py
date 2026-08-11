@@ -284,6 +284,8 @@ def trim_seen_records(records: dict[str, Any]) -> dict[str, Any]:
 
 def render_message(records: Iterable[dict[str, Any]]) -> str:
     records = list(records)
+    if len(records) == 1 and records[0].get("message"):
+        return str(records[0]["message"]).strip()[:4096]
     lines = ["🚨 Nuevo anuncio de reset de límites de ChatGPT Work/Codex"]
     for record in records:
         lines.append("")
@@ -314,6 +316,33 @@ def write_outputs(notify: bool, message: str = "", keys: Iterable[str] = ()) -> 
         output.write(f"\n{marker}\n")
 
 
+def write_pending_outputs(state: dict[str, Any]) -> None:
+    pending_records = sorted(
+        state["pending"].values(),
+        key=lambda record: str(record.get("published_at") or ""),
+    )
+    if pending_records:
+        batch = pending_records[:MAX_ALERTS_PER_MESSAGE]
+        message = render_message(batch)
+        keys = [str(record["key"]) for record in batch]
+        print(f"{len(pending_records)} pending OpenAI usage reset alert(s); sending {len(batch)}.")
+        write_outputs(True, message, keys)
+    else:
+        print("No new OpenAI usage reset announcements.")
+        write_outputs(False)
+
+
+def known_official_posts(state: dict[str, Any]) -> set[str]:
+    urls: set[str] = set()
+    for bucket_name in ("seen", "pending"):
+        bucket = state.get(bucket_name, {})
+        if isinstance(bucket, dict):
+            for record in bucket.values():
+                if isinstance(record, dict) and record.get("official_post"):
+                    urls.add(str(record["official_post"]))
+    return urls
+
+
 def scan(path: Path) -> int:
     state = load_state(path)
     candidates = collect_candidates()
@@ -335,28 +364,66 @@ def scan(path: Path) -> int:
     if not isinstance(seen, dict) or not isinstance(pending, dict):
         raise WatchError("watcher state has invalid seen or pending records")
 
+    official_posts = known_official_posts(state)
     for record in candidates:
         key = record["key"]
-        if key not in seen and key not in pending:
+        official_post = str(record.get("official_post") or "")
+        if key not in seen and key not in pending and (not official_post or official_post not in official_posts):
             pending[key] = record
+            if official_post:
+                official_posts.add(official_post)
 
     state["pending"] = pending
     state["seen"] = trim_seen_records(seen)
     save_state(path, state)
 
-    pending_records = sorted(
-        state["pending"].values(),
-        key=lambda record: str(record.get("published_at") or ""),
-    )
-    if pending_records:
-        batch = pending_records[:MAX_ALERTS_PER_MESSAGE]
-        message = render_message(batch)
-        keys = [str(record["key"]) for record in batch]
-        print(f"{len(pending_records)} pending OpenAI usage reset alert(s); sending {len(batch)}.")
-        write_outputs(True, message, keys)
-    else:
-        print("No new OpenAI usage reset announcements.")
+    write_pending_outputs(state)
+    return 0
+
+
+def ingest_luna_report(
+    path: Path,
+    official_url: str,
+    title: str,
+    published_at: str | None,
+    message: str,
+) -> int:
+    """Queue one Luna-researched official X event into the shared outbox."""
+
+    official_url = official_url.strip()
+    if not X_POST_RE.fullmatch(official_url) or not verify_x_post(official_url):
+        raise WatchError("Luna ingest URL is not a verified @thsottiaux X status")
+
+    state = load_state(path)
+    seen = state.get("seen", {})
+    pending = state.get("pending", {})
+    if not isinstance(seen, dict) or not isinstance(pending, dict):
+        raise WatchError("watcher state has invalid seen or pending records")
+    state["initialized"] = True
+
+    if official_url in known_official_posts(state):
+        print(f"Official event already recorded: {official_url}")
+        save_state(path, state)
         write_outputs(False)
+        return 0
+
+    status_id = official_url.rstrip("/").rsplit("/", 1)[-1]
+    record = candidate(
+        key=f"x-status:{status_id}",
+        title=title or "Luna-confirmed OpenAI usage reset",
+        url=official_url,
+        published_at=published_at,
+        excerpt=message,
+        source="Luna official-source research; X author verified by oEmbed",
+        official_post=official_url,
+    )
+    if message.strip():
+        record["message"] = message.strip()[:4096]
+    pending[record["key"]] = record
+    state["pending"] = pending
+    state["seen"] = trim_seen_records(seen)
+    save_state(path, state)
+    write_pending_outputs(state)
     return 0
 
 
@@ -384,6 +451,10 @@ def main() -> int:
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE)
     parser.add_argument("--finalize", action="store_true", help="move pending alerts to seen after WhatsApp succeeds")
     parser.add_argument("--finalize-keys-json", help="JSON list of pending keys included in the successful WhatsApp send")
+    parser.add_argument("--ingest-url", help="verified official X status found by the Luna researcher")
+    parser.add_argument("--ingest-title", default="")
+    parser.add_argument("--ingest-published-at")
+    parser.add_argument("--ingest-message", default="")
     args = parser.parse_args()
     try:
         keys: list[str] | None = None
@@ -392,7 +463,17 @@ def main() -> int:
             if not isinstance(parsed_keys, list) or not all(isinstance(key, str) for key in parsed_keys):
                 raise WatchError("--finalize-keys-json must be a JSON list of strings")
             keys = parsed_keys
-        return finalize(args.state, keys) if args.finalize else scan(args.state)
+        if args.finalize:
+            return finalize(args.state, keys)
+        if args.ingest_url:
+            return ingest_luna_report(
+                args.state,
+                args.ingest_url,
+                args.ingest_title,
+                args.ingest_published_at,
+                args.ingest_message,
+            )
+        return scan(args.state)
     except json.JSONDecodeError as exc:
         print(f"ERROR: invalid --finalize-keys-json: {exc}", file=sys.stderr)
         return 1
