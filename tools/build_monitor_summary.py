@@ -19,6 +19,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reports-dir", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument(
+        "--tracker",
+        action="append",
+        default=[],
+        type=Path,
+        help="Tracker HTML file that should receive the current embedded monitor snapshot. May be repeated.",
+    )
     return parser.parse_args()
 
 
@@ -62,6 +69,15 @@ def report_kind(text: str) -> str | None:
     return None
 
 
+def markdown_url(value: str) -> str:
+    match = re.search(r"\((https?://[^)]+)\)", value)
+    return match.group(1) if match else ""
+
+
+def status_key(value: str) -> str:
+    return value.strip().lower().replace(" ", "_")
+
+
 def load_reports(reports_dir: Path) -> list[dict[str, object]]:
     reports = []
     for path in reports_dir.glob("*.md"):
@@ -88,6 +104,17 @@ def summary_from_reports(reports_dir: Path) -> dict[str, object]:
     inventory_text = str(inventory["text"])
     inventory_rows = table_rows(section(inventory_text, "Fuentes oficiales"))
     configured_sources = len(inventory_rows)
+    inventory_sources: dict[str, dict[str, str]] = {}
+    for row in inventory_rows:
+        if len(row) < 4:
+            continue
+        inventory_sources[row[0]] = {
+            "source": row[0],
+            "status": row[1].split("—", 1)[0].strip(),
+            "lastReliable": row[2],
+            "url": markdown_url(row[3]),
+            "inventoryEvidence": row[1],
+        }
     inventory_attempts = 0
     initial_attempts = 0
     inventory_retries = 0
@@ -124,6 +151,7 @@ def summary_from_reports(reports_dir: Path) -> dict[str, object]:
     unresolved = configured_sources
     recovery_name = None
     recovery_checked = None
+    source_rows: list[dict[str, str]] = []
 
     if recovery:
         recovery_text = str(recovery["text"])
@@ -131,6 +159,21 @@ def summary_from_reports(reports_dir: Path) -> dict[str, object]:
         for row in recovery_rows:
             markers = [int(value) for value in re.findall(r"\bP(\d+)\b", " ".join(row), re.I)]
             recovery_attempts += max(markers) if markers else 1
+            if len(row) >= 4:
+                base = inventory_sources.get(row[0], {})
+                source_rows.append(
+                    {
+                        "source": row[0],
+                        "status": row[1],
+                        "checked": recovery["checked"].isoformat(),
+                        "lastReliable": base.get("lastReliable", "No reliable prior check recorded"),
+                        "failure": row[3],
+                        "recovery": f"Recovery report {recovery['path'].name}; {row[3]}",
+                        "manual": row[3],
+                        "filterEvidence": row[2],
+                        "url": base.get("url", ""),
+                    }
+                )
 
         counts = {}
         for row in table_rows(section(recovery_text, "Resumen de recuperación")):
@@ -142,10 +185,26 @@ def summary_from_reports(reports_dir: Path) -> dict[str, object]:
         recovery_name = recovery["path"].name
         recovery_checked = recovery["checked"]
 
+    if not source_rows:
+        for source in inventory_sources.values():
+            source_rows.append(
+                {
+                    "source": source["source"],
+                    "status": source["status"],
+                    "checked": inventory["checked"].isoformat(),
+                    "lastReliable": source["lastReliable"],
+                    "failure": source["inventoryEvidence"],
+                    "recovery": "No qualifying recovery report was available for this inventory.",
+                    "manual": source["inventoryEvidence"],
+                    "filterEvidence": "See inventory report",
+                    "url": source["url"],
+                }
+            )
+
     comparable = retrieved + confirmed_zero
     latest_checked = recovery_checked or inventory["checked"]
     return {
-        "updatedAt": datetime.now(SANTIAGO_TZ).isoformat(),
+        "updatedAt": latest_checked.isoformat(),
         "inventoryReport": inventory_path.name,
         "inventoryChecked": inventory["checked"].isoformat(),
         "recoveryReport": recovery_name,
@@ -164,7 +223,45 @@ def summary_from_reports(reports_dir: Path) -> dict[str, object]:
             "inventoryRetries": inventory_retries,
             "recoverySourceAttempts": recovery_attempts,
         },
+        "sources": source_rows,
+        "failedSources": [
+            source
+            for source in source_rows
+            if status_key(source["status"]) not in {"retrieved", "confirmed_zero"}
+        ],
+        "reviewedSources": [
+            source
+            for source in source_rows
+            if status_key(source["status"]) in {"retrieved", "confirmed_zero"}
+        ],
     }
+
+
+MONITOR_BLOCK_RE = re.compile(
+    r"// MONITOR_SUMMARY_START\s*\nconst CHILE_MONITOR_SUMMARY\s*=\s*\{[\s\S]*?\};\s*\n// MONITOR_SUMMARY_END"
+)
+
+
+def embed_summary(tracker: Path, summary: dict[str, object]) -> bool:
+    html = tracker.read_text(encoding="utf-8")
+    serialized = json.dumps(summary, ensure_ascii=False, indent=2)
+    block = (
+        "// MONITOR_SUMMARY_START\n"
+        f"const CHILE_MONITOR_SUMMARY = {serialized};\n"
+        "// MONITOR_SUMMARY_END"
+    )
+    if MONITOR_BLOCK_RE.search(html):
+        updated = MONITOR_BLOCK_RE.sub(block, html, count=1)
+    else:
+        anchor = "const LINKEDIN_DISCOVERY_SOURCE="
+        index = html.find(anchor)
+        if index < 0:
+            raise ValueError(f"Could not find monitor summary insertion point in {tracker}")
+        updated = html[:index] + block + "\n" + html[index:]
+    if updated == html:
+        return False
+    tracker.write_text(updated, encoding="utf-8")
+    return True
 
 
 def main() -> int:
@@ -172,6 +269,8 @@ def main() -> int:
     summary = summary_from_reports(args.reports_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    for tracker in args.tracker:
+        embed_summary(tracker, summary)
     print(json.dumps(summary))
     return 0
 

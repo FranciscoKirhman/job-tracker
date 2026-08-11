@@ -7300,6 +7300,606 @@ const FAILED_SOURCES = [
   {source:'Merck Group',status:'No disponible',checked:'2026-08-02 11:30 America/Santiago',lastReliable:'2026-07-30 00:10 America/Santiago',failure:'La URL oficial de Santiago cargó sin región de resultados, conteo, fichas ni mensaje de error.',recovery:'Se reintentó la página oficial aislada.',manual:'Reintentar y comprobar filtro renderizado y paginación.',url:'https://careers.merckgroup.com/global/en/search-results?m=3&location=Santiago%20de%20Chile%2C%20RM.de%20Santiago%2C%20Chile'},
   {source:'Medpace',status:'No comparable',checked:'2026-08-02 11:30 America/Santiago',lastReliable:'Sin inventario Chile confiable',failure:'Mostró 14 resultados cercanos a Chile pertenecientes a otros países.',recovery:'Se abrió la página oficial aislada.',manual:'Demostrar que Country o Location sea Chile; de lo contrario mantener stale.',url:'https://careers.medpace.com/jobs?searchType=location&page=1&sortBy=posted_date&descending=true&location=Chile'}
 ];
+function currentMonitorSources(){
+  const rows=typeof CHILE_MONITOR_SUMMARY!=='undefined'&&Array.isArray(CHILE_MONITOR_SUMMARY.sources)?CHILE_MONITOR_SUMMARY.sources:[];
+  return rows.length?rows:[...REVIEWED_SOURCES,...FAILED_SOURCES];
+}
+function currentFailedSources(){
+  const rows=typeof CHILE_MONITOR_SUMMARY!=='undefined'&&Array.isArray(CHILE_MONITOR_SUMMARY.failedSources)?CHILE_MONITOR_SUMMARY.failedSources:[];
+  return rows.length?rows:FAILED_SOURCES;
+}
+function currentReviewedSources(){
+  const rows=typeof CHILE_MONITOR_SUMMARY!=='undefined'&&Array.isArray(CHILE_MONITOR_SUMMARY.reviewedSources)?CHILE_MONITOR_SUMMARY.reviewedSources:[];
+  if(!rows.length)return REVIEWED_SOURCES;
+  return rows.map(s=>({...s,observed:s.filterEvidence||'',evidence:s.failure||s.manual||''}));
+}
+function monitorCoverageSnapshot(){
+  const failed=currentFailedSources(),reviewed=currentReviewedSources();
+  const configured=Number(typeof CHILE_MONITOR_SUMMARY!=='undefined'&&CHILE_MONITOR_SUMMARY.configuredSources)||failed.length+reviewed.length||25;
+  const comparable=typeof CHILE_MONITOR_SUMMARY!=='undefined'?Number(CHILE_MONITOR_SUMMARY.comparable):Number.NaN;
+  const reliable=Number.isFinite(comparable)?comparable:reviewed.length;
+  const checked=typeof CHILE_MONITOR_SUMMARY!=='undefined'&&CHILE_MONITOR_SUMMARY.latestMonitorChecked||[...failed,...reviewed].map(x=>x.checked).filter(Boolean).sort().at(-1)||'';
+  return{configured,reliable,failed:failed.length,incident:failed.length>=4,checked};
+}
+// MONITOR_SUMMARY_START
+const CHILE_MONITOR_SUMMARY = {
+  "updatedAt": "2026-08-11T01:31:00-04:00",
+  "inventoryReport": "2026-08-11_0002_America-Santiago.md",
+  "inventoryChecked": "2026-08-11T00:02:00-04:00",
+  "recoveryReport": "2026-08-11_0131_America-Santiago.md",
+  "recoveryChecked": "2026-08-11T01:31:00-04:00",
+  "latestMonitorChecked": "2026-08-11T01:31:00-04:00",
+  "configuredSources": 25,
+  "inventoryAttempts": 2,
+  "recoveryAttempts": 25,
+  "totalAttempts": 27,
+  "retrieved": 1,
+  "confirmedZero": 1,
+  "comparable": 2,
+  "unresolved": 23,
+  "attemptEvidence": {
+    "initialSourceAttempts": 1,
+    "inventoryRetries": 1,
+    "recoverySourceAttempts": 25
+  },
+  "sources": [
+    {
+      "source": "Boston Scientific",
+      "status": "retrieved",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Inventario completo. Continuing: Regulatory Affairs Support, CRM commercial, Structural Cardiology y HRBP South Cone.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Inventario completo. Continuing: Regulatory Affairs Support, CRM commercial, Structural Cardiology y HRBP South Cone.",
+      "manual": "Inventario completo. Continuing: Regulatory Affairs Support, CRM commercial, Structural Cardiology y HRBP South Cone.",
+      "filterEvidence": "Location Chile; 4 jobs; Page 1 of 1",
+      "url": "https://bostonscientific.eightfold.ai/careers?domain=bostonscientific.com&start=0&location=Chile"
+    },
+    {
+      "source": "Novartis",
+      "status": "confirmed_zero",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Cero explícito renderizado, sin continuación.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Cero explícito renderizado, sin continuación.",
+      "manual": "Cero explícito renderizado, sin continuación.",
+      "filterEvidence": "Chile; Showing 0 results",
+      "url": "https://www.novartis.com/careers/career-search?search_api_fulltext=&country%5B%5D=LOC_CL&field_job_posted_date=All&op=Submit"
+    },
+    {
+      "source": "Takeda",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "La pestaña aislada no terminó de exponer resultados antes del cierre; conservar inventario previo; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; La pestaña aislada no terminó de exponer resultados antes del cierre; conservar inventario previo; P1.",
+      "manual": "La pestaña aislada no terminó de exponer resultados antes del cierre; conservar inventario previo; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.takeda.com/search-jobs/Santiago%2C%20Santiago%20Metropolitan%2C%20Chile/1113/4/3895114-3873544-3871332-8261395/-33x4489/-70x6693/50/2"
+    },
+    {
+      "source": "Pfizer",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se acepta la URL como filtro visible; conservar inventario previo; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se acepta la URL como filtro visible; conservar inventario previo; P1.",
+      "manual": "No se acepta la URL como filtro visible; conservar inventario previo; P1.",
+      "filterEvidence": "URL Chile, sin región completa",
+      "url": "https://www.pfizer.cl/carrera/resultados-de-la-b%C3%BAsqueda?langcode=es-es&region%5B0%5D=Chile&count=10&sort=latest"
+    },
+    {
+      "source": "GSK",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.gsk.com/gb/en/search-results?m=3&location=chile"
+    },
+    {
+      "source": "bioMérieux",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de fichas no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de fichas no renderizada de forma comparable; P1.",
+      "manual": "Región de fichas no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://careers.biomerieux.com/search/jobs?location=Santiago%2C+Chile&q="
+    },
+    {
+      "source": "Fraunhofer Chile Research",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Inventario no expuesto en la captura aislada; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Inventario no expuesto en la captura aislada; P1.",
+      "manual": "Inventario no expuesto en la captura aislada; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://fraunhofer.buk.cl/trabaja-con-nosotros"
+    },
+    {
+      "source": "Merck Group",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://careers.merckgroup.com/global/en/search-results?m=3&location=Santiago%20de%20Chile%2C%20RM.de%20Santiago%2C%20Chile"
+    },
+    {
+      "source": "Vantive",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.vantive.com/search-jobs/Chile/47727/2/3895114/-30/-71/50/2"
+    },
+    {
+      "source": "Syneos Health",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.syneoshealth.com/clinical-corporate-careers/jobs/search/?q=&location=Santiago%2C+Chile"
+    },
+    {
+      "source": "IQVIA",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.iqvia.com/en/jobs?locations=Chile"
+    },
+    {
+      "source": "Siemens Healthineers",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se confirmó el control País Chile ni la paginación; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se confirmó el control País Chile ni la paginación; P1.",
+      "manual": "No se confirmó el control País Chile ni la paginación; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.siemens-healthineers.com/es_ES/searchjobs/SearchJobs/?42449=%5B812198%5D&42449_format=17593&listFilterMode=1&folderRecordsPerPage=6&"
+    },
+    {
+      "source": "Roche",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se estableció inventario completo; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se estableció inventario completo; P1.",
+      "manual": "No se estableció inventario completo; P1.",
+      "filterEvidence": "Encabezado de resultados, sin conteo/fichas",
+      "url": "https://careers.roche.com/global/en/search-results?qcountry=Chile"
+    },
+    {
+      "source": "ICON plc",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://careers.iconplc.com/jobs?options=1332&page=1"
+    },
+    {
+      "source": "Johnson & Johnson",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.careers.jnj.com/en/jobs/?search=&country=Chile&pagesize=20#results"
+    },
+    {
+      "source": "Abbott",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se expuso conteo ni paginación completa; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se expuso conteo ni paginación completa; P1.",
+      "manual": "No se expuso conteo ni paginación completa; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.jobs.abbott/us/en/search-results?qcity=Santiago&qstate=Region%20Metropolitana%20de%20Santiago&qcountry=Chile"
+    },
+    {
+      "source": "Thermo Fisher Scientific",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se expuso conteo ni paginación completa; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se expuso conteo ni paginación completa; P1.",
+      "manual": "No se expuso conteo ni paginación completa; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.thermofisher.com/mx/es/chile-jobs?s=1&rk=l-chile-search-page"
+    },
+    {
+      "source": "Sandoz",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se confirmó el control interactivo Chile; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se confirmó el control interactivo Chile; P1.",
+      "manual": "No se confirmó el control interactivo Chile; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.sandoz.com/careers/job-search/?field_job_functional_area=&field_job_country=LOC_CL&field_job_alt_country_1=&field_job_posted_date="
+    },
+    {
+      "source": "Novo Nordisk",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se confirmó selector visible Chile; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se confirmó selector visible Chile; P1.",
+      "manual": "No se confirmó selector visible Chile; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.novonordisk.cl/careers/find-a-job/career-search-results.html?searchText=Chile&countries=&categories="
+    },
+    {
+      "source": "Sanofi",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "URL Chile insuficiente sin filtro visible y fichas; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; URL Chile insuficiente sin filtro visible y fichas; P1.",
+      "manual": "URL Chile insuficiente sin filtro visible y fichas; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.sanofi.com/en/search-jobs/Chile/2649/2/3895114/-30/-71/50/2"
+    },
+    {
+      "source": "Boehringer Ingelheim",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "La palabra clave no es filtro país; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; La palabra clave no es filtro país; P1.",
+      "manual": "La palabra clave no es filtro país; P1.",
+      "filterEvidence": "q=chile únicamente",
+      "url": "https://jobs.boehringer-ingelheim.com/search/?createNewAlert=false&q=chile"
+    },
+    {
+      "source": "AstraZeneca",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "URL Chile insuficiente sin ubicación visible; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; URL Chile insuficiente sin ubicación visible; P1.",
+      "manual": "URL Chile insuficiente sin ubicación visible; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://careers.astrazeneca.com/search-jobs/Chile/7684/2/3895114/-30/-71/100/2"
+    },
+    {
+      "source": "Medpace",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Radio commute no equivale a inventario Chile; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Radio commute no equivale a inventario Chile; P1.",
+      "manual": "Radio commute no equivale a inventario Chile; P1.",
+      "filterEvidence": "commute radius",
+      "url": "https://careers.medpace.com/jobs?woe=8&lat=-33.47269&lng=-70.64724&location=Santiago%20Metropolitan,%20Chile&commuteUnit=DRIVING&commute=15&roadTraffic=BUSY_HOUR&searchType=commute&page=1"
+    },
+    {
+      "source": "Parexel",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se confirmó filtro visible Chile/Santiago; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se confirmó filtro visible Chile/Santiago; P1.",
+      "manual": "No se confirmó filtro visible Chile/Santiago; P1.",
+      "filterEvidence": "geolocalización amplia",
+      "url": "https://jobs.parexel.com/en/search-jobs?glat=-33.412&glon=-70.5796"
+    },
+    {
+      "source": "AbbVie",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "URL sola y conteo global no son comparables; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; URL sola y conteo global no son comparables; P1.",
+      "manual": "URL sola y conteo global no son comparables; P1.",
+      "filterEvidence": "URL Santiago/Chile",
+      "url": "https://careers.abbvie.com/en/jobs?q=&options=&page=1&ln=Santiago%2C%20Santiago%20Metropolitan%20Region%2C%20Chile&la=-33.4488897&lo=-70.6692655&lr=100&li="
+    }
+  ],
+  "failedSources": [
+    {
+      "source": "Takeda",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "La pestaña aislada no terminó de exponer resultados antes del cierre; conservar inventario previo; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; La pestaña aislada no terminó de exponer resultados antes del cierre; conservar inventario previo; P1.",
+      "manual": "La pestaña aislada no terminó de exponer resultados antes del cierre; conservar inventario previo; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.takeda.com/search-jobs/Santiago%2C%20Santiago%20Metropolitan%2C%20Chile/1113/4/3895114-3873544-3871332-8261395/-33x4489/-70x6693/50/2"
+    },
+    {
+      "source": "Pfizer",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se acepta la URL como filtro visible; conservar inventario previo; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se acepta la URL como filtro visible; conservar inventario previo; P1.",
+      "manual": "No se acepta la URL como filtro visible; conservar inventario previo; P1.",
+      "filterEvidence": "URL Chile, sin región completa",
+      "url": "https://www.pfizer.cl/carrera/resultados-de-la-b%C3%BAsqueda?langcode=es-es&region%5B0%5D=Chile&count=10&sort=latest"
+    },
+    {
+      "source": "GSK",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.gsk.com/gb/en/search-results?m=3&location=chile"
+    },
+    {
+      "source": "bioMérieux",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de fichas no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de fichas no renderizada de forma comparable; P1.",
+      "manual": "Región de fichas no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://careers.biomerieux.com/search/jobs?location=Santiago%2C+Chile&q="
+    },
+    {
+      "source": "Fraunhofer Chile Research",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Inventario no expuesto en la captura aislada; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Inventario no expuesto en la captura aislada; P1.",
+      "manual": "Inventario no expuesto en la captura aislada; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://fraunhofer.buk.cl/trabaja-con-nosotros"
+    },
+    {
+      "source": "Merck Group",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://careers.merckgroup.com/global/en/search-results?m=3&location=Santiago%20de%20Chile%2C%20RM.de%20Santiago%2C%20Chile"
+    },
+    {
+      "source": "Vantive",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.vantive.com/search-jobs/Chile/47727/2/3895114/-30/-71/50/2"
+    },
+    {
+      "source": "Syneos Health",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.syneoshealth.com/clinical-corporate-careers/jobs/search/?q=&location=Santiago%2C+Chile"
+    },
+    {
+      "source": "IQVIA",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.iqvia.com/en/jobs?locations=Chile"
+    },
+    {
+      "source": "Siemens Healthineers",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se confirmó el control País Chile ni la paginación; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se confirmó el control País Chile ni la paginación; P1.",
+      "manual": "No se confirmó el control País Chile ni la paginación; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.siemens-healthineers.com/es_ES/searchjobs/SearchJobs/?42449=%5B812198%5D&42449_format=17593&listFilterMode=1&folderRecordsPerPage=6&"
+    },
+    {
+      "source": "Roche",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se estableció inventario completo; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se estableció inventario completo; P1.",
+      "manual": "No se estableció inventario completo; P1.",
+      "filterEvidence": "Encabezado de resultados, sin conteo/fichas",
+      "url": "https://careers.roche.com/global/en/search-results?qcountry=Chile"
+    },
+    {
+      "source": "ICON plc",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://careers.iconplc.com/jobs?options=1332&page=1"
+    },
+    {
+      "source": "Johnson & Johnson",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Región de resultados no renderizada de forma comparable; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Región de resultados no renderizada de forma comparable; P1.",
+      "manual": "Región de resultados no renderizada de forma comparable; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.careers.jnj.com/en/jobs/?search=&country=Chile&pagesize=20#results"
+    },
+    {
+      "source": "Abbott",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se expuso conteo ni paginación completa; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se expuso conteo ni paginación completa; P1.",
+      "manual": "No se expuso conteo ni paginación completa; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.jobs.abbott/us/en/search-results?qcity=Santiago&qstate=Region%20Metropolitana%20de%20Santiago&qcountry=Chile"
+    },
+    {
+      "source": "Thermo Fisher Scientific",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se expuso conteo ni paginación completa; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se expuso conteo ni paginación completa; P1.",
+      "manual": "No se expuso conteo ni paginación completa; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.thermofisher.com/mx/es/chile-jobs?s=1&rk=l-chile-search-page"
+    },
+    {
+      "source": "Sandoz",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se confirmó el control interactivo Chile; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se confirmó el control interactivo Chile; P1.",
+      "manual": "No se confirmó el control interactivo Chile; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.sandoz.com/careers/job-search/?field_job_functional_area=&field_job_country=LOC_CL&field_job_alt_country_1=&field_job_posted_date="
+    },
+    {
+      "source": "Novo Nordisk",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se confirmó selector visible Chile; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se confirmó selector visible Chile; P1.",
+      "manual": "No se confirmó selector visible Chile; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://www.novonordisk.cl/careers/find-a-job/career-search-results.html?searchText=Chile&countries=&categories="
+    },
+    {
+      "source": "Sanofi",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "URL Chile insuficiente sin filtro visible y fichas; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; URL Chile insuficiente sin filtro visible y fichas; P1.",
+      "manual": "URL Chile insuficiente sin filtro visible y fichas; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://jobs.sanofi.com/en/search-jobs/Chile/2649/2/3895114/-30/-71/50/2"
+    },
+    {
+      "source": "Boehringer Ingelheim",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "La palabra clave no es filtro país; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; La palabra clave no es filtro país; P1.",
+      "manual": "La palabra clave no es filtro país; P1.",
+      "filterEvidence": "q=chile únicamente",
+      "url": "https://jobs.boehringer-ingelheim.com/search/?createNewAlert=false&q=chile"
+    },
+    {
+      "source": "AstraZeneca",
+      "status": "unavailable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "URL Chile insuficiente sin ubicación visible; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; URL Chile insuficiente sin ubicación visible; P1.",
+      "manual": "URL Chile insuficiente sin ubicación visible; P1.",
+      "filterEvidence": "No verificable",
+      "url": "https://careers.astrazeneca.com/search-jobs/Chile/7684/2/3895114/-30/-71/100/2"
+    },
+    {
+      "source": "Medpace",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Radio commute no equivale a inventario Chile; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Radio commute no equivale a inventario Chile; P1.",
+      "manual": "Radio commute no equivale a inventario Chile; P1.",
+      "filterEvidence": "commute radius",
+      "url": "https://careers.medpace.com/jobs?woe=8&lat=-33.47269&lng=-70.64724&location=Santiago%20Metropolitan,%20Chile&commuteUnit=DRIVING&commute=15&roadTraffic=BUSY_HOUR&searchType=commute&page=1"
+    },
+    {
+      "source": "Parexel",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "No se confirmó filtro visible Chile/Santiago; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; No se confirmó filtro visible Chile/Santiago; P1.",
+      "manual": "No se confirmó filtro visible Chile/Santiago; P1.",
+      "filterEvidence": "geolocalización amplia",
+      "url": "https://jobs.parexel.com/en/search-jobs?glat=-33.412&glon=-70.5796"
+    },
+    {
+      "source": "AbbVie",
+      "status": "not_comparable",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "URL sola y conteo global no son comparables; P1.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; URL sola y conteo global no son comparables; P1.",
+      "manual": "URL sola y conteo global no son comparables; P1.",
+      "filterEvidence": "URL Santiago/Chile",
+      "url": "https://careers.abbvie.com/en/jobs?q=&options=&page=1&ln=Santiago%2C%20Santiago%20Metropolitan%20Region%2C%20Chile&la=-33.4488897&lo=-70.6692655&lr=100&li="
+    }
+  ],
+  "reviewedSources": [
+    {
+      "source": "Boston Scientific",
+      "status": "retrieved",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Inventario completo. Continuing: Regulatory Affairs Support, CRM commercial, Structural Cardiology y HRBP South Cone.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Inventario completo. Continuing: Regulatory Affairs Support, CRM commercial, Structural Cardiology y HRBP South Cone.",
+      "manual": "Inventario completo. Continuing: Regulatory Affairs Support, CRM commercial, Structural Cardiology y HRBP South Cone.",
+      "filterEvidence": "Location Chile; 4 jobs; Page 1 of 1",
+      "url": "https://bostonscientific.eightfold.ai/careers?domain=bostonscientific.com&start=0&location=Chile"
+    },
+    {
+      "source": "Novartis",
+      "status": "confirmed_zero",
+      "checked": "2026-08-11T01:31:00-04:00",
+      "lastReliable": "2026-08-09 20:09",
+      "failure": "Cero explícito renderizado, sin continuación.",
+      "recovery": "Recovery report 2026-08-11_0131_America-Santiago.md; Cero explícito renderizado, sin continuación.",
+      "manual": "Cero explícito renderizado, sin continuación.",
+      "filterEvidence": "Chile; Showing 0 results",
+      "url": "https://www.novartis.com/careers/career-search?search_api_fulltext=&country%5B%5D=LOC_CL&field_job_posted_date=All&op=Submit"
+    }
+  ]
+};
+// MONITOR_SUMMARY_END
 const LINKEDIN_DISCOVERY_SOURCE={source:'LinkedIn Jobs',status:'Canal secundario',checked:'2026-08-02 11:30 America/Santiago',lastReliable:'2026-08-02 00:09, descubrimientos públicos',evidence:'Las alertas y resultados públicos sirven para descubrir cargos, pero no constituyen inventario oficial completo.',rule:'Validar cada cargo en el portal oficial del empleador antes de considerarlo abierto, cerrado o prioritario.',url:'https://www.linkedin.com/jobs/search/?location=Chile&f_TPR=r604800&sortBy=DD'};
 const LINKEDIN_SAVED_SEARCHES=[
   {lane:'MSL',query:'Medical Science Liaison OR Medical Scientific Liaison OR MSL',chile:'https://www.linkedin.com/jobs/search/?keywords=Medical%20Science%20Liaison%20OR%20Medical%20Scientific%20Liaison%20OR%20MSL&location=Chile&f_TPR=r604800&sortBy=DD',santiago:'https://www.linkedin.com/jobs/search/?keywords=Medical%20Science%20Liaison%20OR%20Medical%20Scientific%20Liaison%20OR%20MSL&location=Santiago%2C%20Chile&f_TPR=r604800&sortBy=DD'},
@@ -7448,12 +8048,13 @@ function localDayKey(d=new Date()){return santiagoDateParts(d);}
 function jobs3ChatDeadlineDays(value){if(!value)return null;const end=new Date(value+'T23:59:59'),now=new Date();if(Number.isNaN(end.getTime()))return null;return Math.ceil((end-now)/86400000);}
 function buildJobs3ChatContext(){
   const counts={};STATUSES.forEach(s=>counts[s]=S.jobs.filter(j=>effectiveStatus(j)===s).length);
+  const coverage=monitorCoverageSnapshot(),failedSources=currentFailedSources(),reviewedSources=currentReviewedSources();
   const rank={HIGH:0,MEDIUM:1,LOW:2};
   const topActions=S.jobs.filter(j=>j.status==='todo').sort((a,b)=>(rank[a.priority]??9)-(rank[b.priority]??9)||Number(b.fitScore||0)-Number(a.fitScore||0)||(b.createdAt||'').localeCompare(a.createdAt||'')).slice(0,8).map(j=>({company:j.company,role:j.role,jobId:j.jobId||'',fit:Number(j.fitScore||0),priority:j.priority,deadline:j.deadline||'',risk:(j.gaps||[]).slice(0,2),link:j.links||''}));
   const upcomingInterviews=S.jobs.flatMap(j=>(j.interviews||[]).filter(iv=>iv.date&&iv.date>=today()).map(iv=>({company:j.company,role:j.role,date:iv.date,type:iv.type||'',notes:iv.notes||''}))).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,8);
   const deadlines=S.jobs.filter(j=>j.status==='todo'&&j.deadline).map(j=>({...j,days:jobs3ChatDeadlineDays(j.deadline)})).filter(j=>j.days!==null&&j.days>=0&&j.days<=7).sort((a,b)=>a.days-b.days).map(j=>({company:j.company,role:j.role,deadline:j.deadline,days:j.days,fit:Number(j.fitScore||0)}));
   const newOpportunities=[...NEW_JOB_RECOMMENDATIONS,...ADJACENT_OPPORTUNITIES].filter(j=>fitCategory(j.fit)==='high'||fitCategory(j.fit)==='good').sort((a,b)=>Number(b.fit||0)-Number(a.fit||0)).slice(0,10).map(j=>({company:j.company,role:j.role,jobId:j.jobId||'',fit:Number(j.fit||0),fitCategory:fitCategory(j.fit),decision:j.decision||'',closing:j.closing||'',reason:j.reason||'',risk:j.risk||'',action:j.action||'',url:j.url||''}));
-  return {generatedAt:new Date().toISOString(),canonical:{total:S.jobs.length,counts},topActions,upcomingInterviews,deadlinesNextSevenDays:deadlines,newOpportunities,mailAudit:MAIL_AUDIT,mailSignals:MAIL_SIGNALS,officialCoverage:{configured:25,reliable:REVIEWED_SOURCES.length,failed:FAILED_SOURCES.length,incident:FAILED_SOURCES.length>=4},failedSources:FAILED_SOURCES.map(s=>({source:s.source,status:s.status,checked:s.checked,lastReliable:s.lastReliable,failure:s.failure,manual:s.manual,url:s.url})),reviewedSources:REVIEWED_SOURCES.map(s=>({source:s.source,checked:s.checked,status:s.status,observed:s.observed})),linkedinDiscovery:LINKEDIN_DISCOVERY_SOURCE,savedLinkedinSearches:LINKEDIN_SAVED_SEARCHES,linkedinMailSignals:LINKEDIN_MAIL_SIGNALS,automationFeed:JOBS3_AUTOMATION_FEED};
+  return {generatedAt:new Date().toISOString(),canonical:{total:S.jobs.length,counts},topActions,upcomingInterviews,deadlinesNextSevenDays:deadlines,newOpportunities,mailAudit:MAIL_AUDIT,mailSignals:MAIL_SIGNALS,officialCoverage:coverage,failedSources:failedSources.map(s=>({source:s.source,status:s.status,checked:s.checked,lastReliable:s.lastReliable,failure:s.failure,manual:s.manual,url:s.url})),reviewedSources:reviewedSources.map(s=>({source:s.source,checked:s.checked,status:s.status,observed:s.observed})),linkedinDiscovery:LINKEDIN_DISCOVERY_SOURCE,savedLinkedinSearches:LINKEDIN_SAVED_SEARCHES,linkedinMailSignals:LINKEDIN_MAIL_SIGNALS,automationFeed:JOBS3_AUTOMATION_FEED};
 }
 function buildJobs3MorningFallback(){
   const c=buildJobs3ChatContext(),lines=['Buenos días Francisco.'];
@@ -7566,7 +8167,7 @@ function sourceReviewInput(source,status){
   saveSourceReviewInputs(inputs);renderSources();renderHome();
 }
 function openSourceReview(source){
-  const item=FAILED_SOURCES.find(x=>x.source===source);if(!item)return;
+  const item=currentFailedSources().find(x=>x.source===source);if(!item)return;
   SOURCE_REVIEW_ACTIVE=source;SOURCE_REVIEW_ANALYSIS=null;
   document.getElementById('sourceReviewTitle').textContent=`Revisión manual: ${source}`;
   document.getElementById('sourceReviewSubtitle').textContent=`Estado técnico actual: ${item.status} · revisada ${compactStamp(item.checked)}`;
@@ -8093,9 +8694,10 @@ function renderInterest(){
 
 function renderSources(){
   const failed=document.getElementById('failedSourcesList'),reviewed=document.getElementById('reviewedSourcesList'),linkedin=document.getElementById('linkedinDiscoveryPanel'),searches=document.getElementById('savedSearchesList'),signals=document.getElementById('linkedinMailSignalsList');if(!failed||!reviewed||!linkedin||!searches||!signals)return;
-  document.getElementById('sourceNavCnt').textContent=FAILED_SOURCES.length;
+  const failedSources=currentFailedSources(),reviewedSources=currentReviewedSources();
+  document.getElementById('sourceNavCnt').textContent=failedSources.length;
   const inputs=loadSourceReviewInputs();
-  failed.innerHTML=FAILED_SOURCES.map(s=>{
+  failed.innerHTML=failedSources.map(s=>{
     const input=inputs[s.source],state=input?.status||'pending';
     const outcome=input?.manualDecision||'';
     const stateLabel=state==='reviewed'?(SOURCE_REVIEW_LABELS[outcome]||'Revisión anotada'):state==='dismissed'?'Descartada por ahora':'Alerta pendiente';
@@ -8110,7 +8712,7 @@ function renderSources(){
   linkedin.innerHTML=`<article class="linkedin-secondary"><div class="linkedin-secondary-head"><div><h4>${esc(LINKEDIN_DISCOVERY_SOURCE.source)}</h4><p>${esc(LINKEDIN_DISCOVERY_SOURCE.evidence)}</p></div><span class="decision-pill source-state-open">${esc(LINKEDIN_DISCOVERY_SOURCE.status)}</span></div><p><b>Regla:</b> ${esc(LINKEDIN_DISCOVERY_SOURCE.rule)}</p><p class="source-time">Última revisión secundaria: ${esc(LINKEDIN_DISCOVERY_SOURCE.checked)}</p>${safeHref(LINKEDIN_DISCOVERY_SOURCE.url)?`<a class="history-link" href="${esc(LINKEDIN_DISCOVERY_SOURCE.url)}" target="_blank" rel="noreferrer">Abrir descubrimiento reciente</a>`:''}</article>`;
   searches.innerHTML=LINKEDIN_SAVED_SEARCHES.map(s=>`<article class="saved-search-card"><h4>${esc(s.lane)}</h4><p>${esc(s.query)} · publicaciones de los últimos 7 días · más recientes primero.</p><div class="saved-search-actions"><a href="${esc(s.chile)}" target="_blank" rel="noreferrer">Chile</a><a href="${esc(s.santiago)}" target="_blank" rel="noreferrer">Santiago</a></div></article>`).join('');
   signals.innerHTML=LINKEDIN_MAIL_SIGNALS.sort((a,b)=>b.received.localeCompare(a.received)).map(s=>{const valid=s.status.startsWith('Validada');return`<details class="collapse-card"><summary><div class="collapse-title"><strong>${esc(s.company)} · ${esc(s.role)}</strong><span>${esc(s.lane)} · correo ${esc(compactStamp(s.received))}</span></div><span class="decision-pill ${valid?'linkedin-signal-valid':'linkedin-signal-pending'}">${esc(s.status)}</span></summary><div class="collapse-body"><p><b>Tratamiento:</b> señal de descubrimiento por correo. No cambia el tracker ni confirma una vacante por sí sola.</p><p><b>Validación:</b> ${esc(s.validation)}</p><p><a class="history-link" href="${esc(s.mailUrl)}" target="_blank" rel="noreferrer">Abrir correo</a> · <a class="history-link" href="${esc(s.officialUrl)}" target="_blank" rel="noreferrer">Revisar portal oficial</a></p></div></details>`;}).join('');
-  reviewed.innerHTML=REVIEWED_SOURCES.map(s=>`<details class="collapse-card source-ok">
+  reviewed.innerHTML=reviewedSources.map(s=>`<details class="collapse-card source-ok">
     <summary><div class="collapse-title"><strong>${esc(s.source)}</strong><span>${esc(s.observed)} · ${esc(s.status)}</span></div><span class="decision-pill source-ok-badge">Revisión correcta</span></summary>
     <div class="collapse-body"><p class="source-time">Revisada: ${esc(s.checked)}</p><p><b>Evidencia:</b> ${esc(s.evidence)}</p><div class="age-row"><span class="age-pill">${esc(ageSince(s.checked))}</span><span class="age-pill next">Próxima revisión prevista: ${esc(nextScheduledLabel('inventory'))}</span></div></div>
   </details>`).join('');
@@ -8231,10 +8833,11 @@ function renderHome(){
   const active=m.todo+m.applied+m.interview+m.offer;
   const deadlines=S.jobs.filter(j=>j.deadline&&!['rejected','withdrawn'].includes(j.status)).map(j=>({j,days:dBetween(now,j.deadline)})).filter(x=>x.days!==null&&x.days>=0&&x.days<=3).sort((a,b)=>a.days-b.days);
   const upcoming=S.jobs.map(j=>({j,iv:nextIv(j)})).filter(x=>x.iv).sort((a,b)=>String(a.iv.date).localeCompare(String(b.iv.date)));
-  const sourceTotal=REVIEWED_SOURCES.length+FAILED_SOURCES.length;
-  const sourcePct=sourceTotal?Math.round(FAILED_SOURCES.length/sourceTotal*100):0;
+  const coverage=monitorCoverageSnapshot(),failedSources=currentFailedSources();
+  const sourceTotal=coverage.configured;
+  const sourcePct=sourceTotal?Math.round(coverage.failed/sourceTotal*100):0;
   const sourceInputs=loadSourceReviewInputs();
-  const sourcePending=FAILED_SOURCES.filter(x=>!sourceInputs[x.source]).length;
+  const sourcePending=failedSources.filter(x=>!sourceInputs[x.source]).length;
   const newPool=newJobsPool();
   const highFitNew=newPool.filter(x=>+x.fit>=8);
   const topDecisions=[...newPool].sort((a,b)=>decisionScoreMeta(b).score-decisionScoreMeta(a).score||Number(b.fit)-Number(a.fit)).slice(0,3);
@@ -8246,7 +8849,7 @@ function renderHome(){
     {value:active,label:'procesos activos',note:'Postulada, entrevista u oferta',spark:activeVals,sparkColor:'var(--blue)',trend:trendChip(activeVals)},
     {value:m.interview,label:'en entrevista',note:'estado canónico actual',spark:ivVals,sparkColor:'var(--cyan)',trend:trendChip(ivVals)},
     {value:newPool.length,label:'vacantes nuevas',note:`${highFitNew.length} con fit alto`},
-    {value:FAILED_SOURCES.length,label:'fuentes fallidas',note:`${sourcePending} alertas manuales pendientes`},
+    {value:coverage.failed,label:'fuentes fallidas',note:`${sourcePending} alertas manuales pendientes`},
     {value:MAIL_AUDIT.newRelevant,label:'correos nuevos',note:'laborales y relevantes'},
     {value:deadlines.length,label:'cierres en 72 horas',note:'solo fechas confirmadas'}
   ];
@@ -8261,7 +8864,7 @@ function renderHome(){
   if(upcoming.length)priorities.push({kind:'urgent',title:`${upcoming.length} entrevista${upcoming.length===1?'':'s'} próxima${upcoming.length===1?'':'s'}`,note:upcoming.slice(0,2).map(x=>`${x.j.company}: ${compactStamp(x.iv.date)}`).join(' · '),page:'apps',cta:'Preparar'});
   if(highFitNew.length)priorities.push({kind:'urgent',title:`${highFitNew.length} vacante${highFitNew.length===1?'':'s'} pendiente${highFitNew.length===1?'':'s'} con fit alto`,note:highFitNew.slice(0,2).map(x=>`${x.company}: ${x.role} · ${Number(x.fit).toFixed(1)}`).join(' · '),page:'new',cta:'Revisar ahora'});
   if(topDecisions.length)priorities.push({kind:'',title:'Las tres mejores decisiones ahora',note:topDecisions.map(x=>`${x.company}: ${x.role} · ${decisionScoreMeta(x).score}`).join(' · '),page:'new',cta:'Revisar'});
-  if(FAILED_SOURCES.length)priorities.push({kind:'alert',title:`Cobertura incompleta: ${FAILED_SOURCES.length} fuentes fallidas`,note:`Cobertura confiable ${REVIEWED_SOURCES.length} de ${sourceTotal}. ${sourcePct}% requiere revisión manual y sigue siendo MONITOR INCIDENT.`,page:'sources',cta:'Ver alerta'});
+  if(coverage.failed)priorities.push({kind:'alert',title:`Cobertura incompleta: ${coverage.failed} fuentes fallidas`,note:`Cobertura confiable ${coverage.reliable} de ${sourceTotal}. ${sourcePct}% requiere recuperación y sigue siendo MONITOR INCIDENT.`,page:'sources',cta:'Ver alerta'});
   if(MAIL_AUDIT.newRelevant)priorities.push({kind:'alert',title:`${MAIL_AUDIT.newRelevant} correo${MAIL_AUDIT.newRelevant===1?'':'s'} laboral${MAIL_AUDIT.newRelevant===1?'':'es'} nuevo${MAIL_AUDIT.newRelevant===1?'':'s'}`,note:'Revisar si confirma una postulación, solicita una acción o cambia un proceso.',page:'mail',cta:'Ver correos'});
   if(newPool.length)priorities.push({kind:'',title:`${newPool.length} vacante${newPool.length===1?'':'s'} pendiente${newPool.length===1?'':'s'} de revisar`,note:'Agrupadas por empresa con razón a favor, recomendación y pared o riesgo exacto.',page:'new',cta:'Ver nuevas'});
   if(timing.stale.length)priorities.push({kind:'',title:`${timing.stale.length} procesos sobre el umbral de silencio`,note:`Sin respuesta después de ${timing.ghostAt} días. Revisar seguimientos sugeridos sin cambiar el tracker automáticamente.`,page:'calendar',cta:'Ver calendario'});
@@ -8275,15 +8878,15 @@ function renderHome(){
   ];
   const denom=Math.max(1,pipeline.reduce((a,x)=>a+x.value,0));
   pipelineEl.innerHTML=`<div class="home-pipeline-bar">${pipeline.filter(x=>x.value).map(x=>`<span style="width:${x.value/denom*100}%;background:${x.color}"></span>`).join('')}</div><div class="home-pipeline-legend">${pipeline.map(x=>`<div class="home-pipeline-item"><b style="color:${x.color}">${x.value}</b><span>${x.label}</span></div>`).join('')}</div>`;
-  document.getElementById('homeHeadline').textContent=deadlines.length?'Hay cierres confirmados próximos. Revísalos antes que cualquier otra sección.':FAILED_SOURCES.length?`Empieza por la alerta de cobertura y luego revisa las ${newPool.length} vacantes pendientes.`:'No hay una alerta urgente. Revisa oportunidades nuevas y procesos activos.';
+  document.getElementById('homeHeadline').textContent=deadlines.length?'Hay cierres confirmados próximos. Revísalos antes que cualquier otra sección.':coverage.failed?`Empieza por la alerta de cobertura y luego revisa las ${newPool.length} vacantes pendientes.`:'No hay una alerta urgente. Revisa oportunidades nuevas y procesos activos.';
   document.getElementById('homeMailFreshness').textContent=compactStamp(MAIL_AUDIT.checkedAt);
   const trackerFresh=document.getElementById('homeTrackerFreshness'),sourceFresh=document.getElementById('homeSourceFreshness'),feedFresh=document.getElementById('homeFeedFreshness');
   if(trackerFresh)trackerFresh.textContent=`${S.jobs.length} puestos · ${compactStamp(new Date(document.lastModified).toISOString())}`;
-  const latestSource=[...REVIEWED_SOURCES,...FAILED_SOURCES].map(x=>x.checked).filter(Boolean).sort().at(-1);if(sourceFresh)sourceFresh.textContent=latestSource?`${REVIEWED_SOURCES.length} de 25 · ${compactStamp(latestSource)}`:`${REVIEWED_SOURCES.length} de 25`;
+  if(sourceFresh)sourceFresh.textContent=coverage.checked?`${coverage.reliable} de ${coverage.configured} · ${compactStamp(coverage.checked)}`:`${coverage.reliable} de ${coverage.configured}`;
   if(feedFresh)feedFresh.textContent=JOBS3_AUTOMATION_FEED.feedError?'Inválido · último válido conservado':JOBS3_AUTOMATION_FEED.updatedAt?compactStamp(JOBS3_AUTOMATION_FEED.updatedAt):'Pendiente';
   const alertStrip=document.getElementById('homeAlertStrip'),alertTitle=document.getElementById('homeAlertTitle'),alertText=document.getElementById('homeAlertText'),alertAction=document.getElementById('homeAlertAction');
-  const alertParts=[];if(deadlines.length)alertParts.push(`${deadlines.length} cierre en 72 horas`);if(upcoming.length)alertParts.push(`${upcoming.length} entrevista próxima`);if(highFitNew.length)alertParts.push(`${highFitNew.length} vacante nueva con fit alto`);if(MAIL_AUDIT.action)alertParts.push(`${MAIL_AUDIT.action} correo con acción`);if(FAILED_SOURCES.length)alertParts.push(`${FAILED_SOURCES.length} fuentes fallidas`);if(feedAlerts.length)alertParts.push(`${feedAlerts.length} alerta automática`);
-  if(alertStrip){const alertCount=deadlines.length+upcoming.length+highFitNew.length+MAIL_AUDIT.action+FAILED_SOURCES.length+feedAlerts.length;alertStrip.classList.toggle('visible',alertCount>0);if(alertTitle)alertTitle.textContent=`${alertCount} alertas requieren atención`;if(alertText)alertText.textContent=alertParts.join(' · ');if(alertAction){const target=deadlines.length||upcoming.length?'calendar':highFitNew.length?'new':MAIL_AUDIT.action?'mail':'sources';alertAction.setAttribute('onclick',`goPage('${target}')`);}}
+  const alertParts=[];if(deadlines.length)alertParts.push(`${deadlines.length} cierre en 72 horas`);if(upcoming.length)alertParts.push(`${upcoming.length} entrevista próxima`);if(highFitNew.length)alertParts.push(`${highFitNew.length} vacante nueva con fit alto`);if(MAIL_AUDIT.action)alertParts.push(`${MAIL_AUDIT.action} correo con acción`);if(coverage.failed)alertParts.push(`${coverage.failed} fuentes fallidas`);if(feedAlerts.length)alertParts.push(`${feedAlerts.length} alerta automática`);
+  if(alertStrip){const alertCount=deadlines.length+upcoming.length+highFitNew.length+MAIL_AUDIT.action+coverage.failed+feedAlerts.length;alertStrip.classList.toggle('visible',alertCount>0);if(alertTitle)alertTitle.textContent=`${alertCount} alertas requieren atención`;if(alertText)alertText.textContent=alertParts.join(' · ');if(alertAction){const target=deadlines.length||upcoming.length?'calendar':highFitNew.length?'new':MAIL_AUDIT.action?'mail':'sources';alertAction.setAttribute('onclick',`goPage('${target}')`);}}
   const navMoreLiveText=document.querySelector('#navMoreLive .nml-text');
   if(navMoreLiveText){
     if(upcoming.length){const{j,iv}=upcoming[0];navMoreLiveText.innerHTML=`Próximo: <b>${esc(j.company)}</b> · ${esc(compactStamp(iv.date))}`;}

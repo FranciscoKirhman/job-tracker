@@ -35,7 +35,11 @@ git pull --quiet origin main
 # Export the newest append-only inventory and recovery evidence for the
 # cloud-hosted 08:00 WhatsApp digest. This records attempt counts and coverage
 # without copying or mutating the source reports.
-python3 tools/build_monitor_summary.py --reports-dir "$REPORTS_DIR" --output "$MONITOR_SUMMARY"
+python3 tools/build_monitor_summary.py \
+  --reports-dir "$REPORTS_DIR" \
+  --output "$MONITOR_SUMMARY" \
+  --tracker "$LOCAL_TRACKER" \
+  --tracker "$REPO_DIR/francisco-job-tracker-2026.html"
 
 # mobile-sync.yml (GitHub Actions) can also be pushing to this same repo at
 # any moment -- rapid phone swipes fire it repeatedly. A single git push
@@ -88,7 +92,11 @@ for attempt in 1 2 3; do
   git reset --quiet HEAD~1
   git checkout --quiet -- francisco-job-tracker-2026.html state/tracked_identities.json state/chile_monitor_summary.json
   git pull --quiet origin main
-  python3 tools/build_monitor_summary.py --reports-dir "$REPORTS_DIR" --output "$MONITOR_SUMMARY"
+  python3 tools/build_monitor_summary.py \
+    --reports-dir "$REPORTS_DIR" \
+    --output "$MONITOR_SUMMARY" \
+    --tracker "$LOCAL_TRACKER" \
+    --tracker "$REPO_DIR/francisco-job-tracker-2026.html"
 done
 
 echo "All push attempts failed after 3 tries -- giving up this cycle, will retry on the next hourly run."
