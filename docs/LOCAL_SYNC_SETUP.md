@@ -48,7 +48,7 @@ The same "Local sync: ..." commit is the single source of truth for three
 separate freshness indicators, deliberately kept in sync rather than each
 inventing its own notion of "recent":
 - The tracker UI's colored dot next to the app count in the header (green <13h, amber 13-30h, red 30h+).
-- The `Última sync local: ...` line in the WhatsApp digest and high-fit alert (`last_local_sync_line()` in `tools/discover_postings.py`).
+- The `Local sync: ... Chile` line in the WhatsApp digest and high fit alert (`last_local_sync_line()` in `tools/discover_postings.py`).
 - `.github/workflows/sync-watchdog.yml`, which runs once a day and pages Francisco over WhatsApp if no `Local sync:` commit landed in the last 24h.
 
 ### Failure notification

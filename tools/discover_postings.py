@@ -49,7 +49,7 @@ SANTIAGO_TZ = ZoneInfo("America/Santiago")
 
 
 def last_local_sync_line() -> str:
-    """'Ultima sync local: ...' line for WhatsApp messages, so Francisco can
+    """'Local sync: ...' line for WhatsApp messages, so Francisco can
     tell from the message itself whether the data reflects his latest local
     edits. Derived from the most recent commit whose message starts with
     "Local sync:" -- tools/sync_local.sh (via sync_market_history.py's
@@ -80,15 +80,29 @@ def last_local_sync_line() -> str:
         return ""
 
     local = synced_at.astimezone(SANTIAGO_TZ)
-    age_seconds = (datetime.now(timezone.utc) - synced_at).total_seconds()
-    hours = age_seconds / 3600
-    if hours < 1:
-        age_text = f"hace {max(1, int(age_seconds // 60))} min"
-    elif hours < 48:
-        age_text = f"hace {hours:.0f}h"
-    else:
-        age_text = f"hace {hours / 24:.0f}d"
-    return f"Última sync local: {local.strftime('%Y-%m-%d %H:%M')} ({age_text})"
+    return f"Local sync: {local.strftime('%d %b %Y, %H:%M')} Chile"
+
+
+def last_monitor_line() -> str:
+    """Return the latest successful cloud discovery monitor time in Chile."""
+    try:
+        result = subprocess.run(
+            [
+                "gh", "api",
+                f"repos/{REPO_SLUG}/actions/workflows/discover.yml/runs?status=completed&per_page=20",
+                "--jq", '[.workflow_runs[] | select(.conclusion == "success")][0].updated_at // ""',
+            ],
+            capture_output=True, text=True, timeout=15, check=True,
+        )
+        iso = result.stdout.strip()
+        if not iso:
+            return ""
+        monitored_at = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except Exception:
+        return ""
+
+    local = monitored_at.astimezone(SANTIAGO_TZ)
+    return f"Job monitor: {local.strftime('%d %b %Y, %H:%M')} Chile, successful"
 
 # Kept short deliberately -- "keep volume low" per the linkedin-search skill's
 # own ToS caution. Derived from the category values already present in

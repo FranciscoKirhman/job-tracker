@@ -5,9 +5,8 @@ Commands, meant to be triggered by the WhatsApp -> Cloudflare Worker ->
 GitHub Actions relay described in docs/WHATSAPP_SETUP.md:
 
   pipeline
-      Status digest: stage counts, today's action items, upcoming
-      deadlines, new postings from MARKET_HISTORY ranked by fit (verified
-      vs unverified shown separately), and a failed-sources summary.
+      Compact status digest: stage counts, the next deadline, discovery and
+      coverage totals, exact local and cloud monitor times, and tracker link.
 
   sources
       List every FAILED_SOURCES entry in full, with the manual-fix note.
@@ -43,9 +42,10 @@ import argparse
 import json
 import re
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -63,6 +63,7 @@ from discover_postings import (  # noqa: E402
     compute_fit,
     identity_keys_from_records,
     last_local_sync_line,
+    last_monitor_line,
     read_discarded_postings,
     tracked_identity_keys,
 )
@@ -76,6 +77,7 @@ TRACKER_URL = "https://franciscokirhman.github.io/job-tracker/francisco-job-trac
 MARKET_HISTORY_PATTERN = re.compile(r"const MARKET_HISTORY = (\[.*?\]);", re.S)
 VERIFIED_STATUSES = {"open"}
 MAX_LISTED = 8
+SANTIAGO_TZ = ZoneInfo("America/Santiago")
 
 
 def all_tracked_keys(tracker: Path) -> set[str]:
@@ -267,14 +269,12 @@ def pipeline_digest(tracker: Path) -> str:
     jobs = read_tracker(tracker)[1]
     context = build_context(tracker, jobs)
     stages = context["derivedStageCounts"]
-    lines = [
-        f"Pipeline as of {context['asOfDate']}:",
-        ", ".join(f"{stage}: {count}" for stage, count in sorted(stages.items())),
-        f"{context['recordCount']} total across {context['companyCount']} companies.",
-    ]
-    sync_line = last_local_sync_line()
-    if sync_line:
-        lines.append(sync_line)
+    now_chile = datetime.now(SANTIAGO_TZ)
+    lines = [f"Jobs3 update | {now_chile.strftime('%d %b %Y, %H:%M')} Chile"]
+    stage_parts = []
+    for label, key in (("Applied", "applied"), ("Interview", "interview"), ("Rejected", "rejected")):
+        stage_parts.append(f"{label} {stages.get(key, 0)}")
+    lines.append(" | ".join(stage_parts))
 
     today = date.today().isoformat()
     upcoming = sorted(
@@ -286,34 +286,27 @@ def pipeline_digest(tracker: Path) -> str:
         key=lambda job: job["deadline"],
     )[:5]
 
-    postings_text, verified_count, unverified_count = new_postings_section(tracker)
-    failed_text, failed_count = failed_sources_summary(tracker)
+    _postings_text, verified_count, unverified_count = new_postings_section(tracker)
+    _failed_text, failed_count = failed_sources_summary(tracker)
 
-    action_items = []
-    if upcoming:
-        action_items.append(f"{len(upcoming)} deadline(s) próximos")
-    if unverified_count:
-        action_items.append(f"{unverified_count} puesto(s) nuevo(s) sin verificar")
-    if failed_count:
-        action_items.append(f"{failed_count} fuente(s) fallida(s) por revisar")
-    if action_items:
-        lines.append("")
-        lines.append("Qué hacer hoy: " + "; ".join(action_items) + ".")
+    discovery_count = verified_count + unverified_count
+    lines.append(f"Discovery items to review: {discovery_count}")
+    lines.append(f"Coverage issues pending: {failed_count}")
 
     if upcoming:
-        lines.append("")
-        lines.append("Upcoming deadlines:")
-        for job in upcoming:
-            lines.append(f"- {job['company']} ({job['role']}): {job['deadline']}")
+        next_job = upcoming[0]
+        lines.append(f"Next deadline: {next_job['company']} | {next_job['deadline']}")
 
-    if postings_text:
-        lines.append(postings_text)
-
-    if failed_text:
-        lines.append(failed_text)
+    sync_line = last_local_sync_line()
+    if sync_line:
+        lines.append(sync_line)
+    monitor_line = last_monitor_line()
+    if monitor_line:
+        lines.append(monitor_line)
 
     lines.append("")
-    lines.append(f"Tracker: {TRACKER_URL}")
+    lines.append("Open tracker:")
+    lines.append(TRACKER_URL)
 
     return "\n".join(lines)
 
