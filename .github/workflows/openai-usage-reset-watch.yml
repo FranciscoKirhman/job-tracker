@@ -5,9 +5,9 @@ name: OpenAI usage reset watch
 # community for posts that quote the Codex team's official staff account.
 on:
   schedule:
-    # GitHub scheduled workflows are best-effort; the offset avoids the most
-    # congested exact-hour boundary while still checking hourly.
-    - cron: "17 * * * *"
+    # Run after the daily Luna researcher. GitHub cron uses UTC, so this is
+    # approximately 10:17 in Santiago during Chilean standard time.
+    - cron: "17 14 * * *"
   workflow_dispatch:
     inputs:
       official_url:
