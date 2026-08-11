@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from check_openai_usage_resets import (
     finalize,
+    ingest_luna_report,
     is_reset_candidate,
     load_state,
     parse_rss,
@@ -124,6 +125,40 @@ class OpenAIUsageResetWatchTests(unittest.TestCase):
             return_value={"author_url": "https://x.com/someone_else", "url": status_url},
         ):
             self.assertFalse(verify_x_post(status_url))
+
+    def test_luna_ingest_and_community_scan_share_official_url_dedupe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            status_url = "https://x.com/thsottiaux/status/2086972802457063486"
+            with patch("check_openai_usage_resets.verify_x_post", return_value=True):
+                self.assertEqual(
+                    ingest_luna_report(
+                        state_path,
+                        status_url,
+                        "Monday reset completed",
+                        "2026-08-10T20:27:00-04:00",
+                        "Informe Luna",
+                    ),
+                    0,
+                )
+            state = load_state(state_path)
+            self.assertEqual(len(state["pending"]), 1)
+            sent_key = next(iter(state["pending"]))
+            self.assertEqual(finalize(state_path, [sent_key]), 0)
+
+            mirrored = {
+                "key": "community-post:999",
+                "title": "Community mirror",
+                "url": "https://community.openai.com/t/999",
+                "published_at": "2026-08-11T00:00:00Z",
+                "excerpt": "",
+                "source": "test",
+                "official_post": status_url,
+            }
+            with patch("check_openai_usage_resets.collect_candidates", return_value=[mirrored]):
+                self.assertEqual(scan(state_path), 0)
+            state = load_state(state_path)
+            self.assertEqual(state["pending"], {})
 
 
 if __name__ == "__main__":
