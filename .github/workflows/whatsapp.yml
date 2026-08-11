@@ -2,12 +2,14 @@ name: WhatsApp tracker sync
 
 on:
   schedule:
-    # ~08:00 Santiago time. Chile's UTC offset shifts with DST; adjust if needed.
-    # Offset 7 minutes past the hour on purpose: GitHub's own docs warn that
-    # schedules landing exactly on the hour (the most common cron pattern)
-    # are more likely to be delayed or dropped under load. See watchdog.yml,
-    # which catches and retries a miss like this either way.
+    # Morning digest at 08:07 and afternoon digest at 13:47 Santiago time.
+    # Chile alternates between UTC minus 3 and UTC minus 4, so both UTC
+    # variants are scheduled. The gate below activates only the cron that
+    # matches the current Santiago offset.
+    - cron: "7 11 * * *"
     - cron: "7 12 * * *"
+    - cron: "47 16 * * *"
+    - cron: "47 17 * * *"
   repository_dispatch:
     types: [whatsapp_command]
   workflow_dispatch:
@@ -66,6 +68,7 @@ jobs:
         id: gate
         env:
           EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE_EXPR: ${{ github.event.schedule }}
           INPUT_COMMAND: ${{ github.event.inputs.command }}
           RAW_MESSAGE: ${{ github.event.inputs.raw_message }}
           FORCE_SEND: ${{ github.event.inputs.force_send }}
@@ -73,25 +76,37 @@ jobs:
           set -e
           today=$(TZ=America/Santiago date +%F)
           is_daily=false
+          slot=""
+          skip=false
           if [ "$EVENT_NAME" = "schedule" ]; then
-            is_daily=true
+            offset=$(TZ=America/Santiago date +%z)
+            case "$SCHEDULE_EXPR|$offset" in
+              "7 11 * * *|-0300"|"7 12 * * *|-0400") slot="morning" ;;
+              "47 16 * * *|-0300"|"47 17 * * *|-0400") slot="afternoon" ;;
+              *) skip=true ;;
+            esac
+            if [ -n "$slot" ]; then is_daily=true; fi
           elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -z "$RAW_MESSAGE" ] && [ "${INPUT_COMMAND:-pipeline}" = "pipeline" ]; then
             is_daily=true
+            hour=$(TZ=America/Santiago date +%H)
+            if [ "$hour" -lt 12 ]; then slot="morning"; else slot="afternoon"; fi
           fi
 
           last_date=""
+          last_slot=""
           if [ -f state/whatsapp_daily_digest.json ]; then
             last_date=$(python3 -c 'import json; print(json.load(open("state/whatsapp_daily_digest.json")).get("date", ""))')
+            last_slot=$(python3 -c 'import json; print(json.load(open("state/whatsapp_daily_digest.json")).get("slot", "morning"))')
           fi
 
-          skip=false
-          if [ "$is_daily" = "true" ] && [ "$FORCE_SEND" != "true" ] && [ "$last_date" = "$today" ]; then
+          if [ "$is_daily" = "true" ] && [ "$FORCE_SEND" != "true" ] && [ "$last_date" = "$today" ] && [ "$last_slot" = "$slot" ]; then
             skip=true
-            echo "Daily digest already accepted on $today; skipping duplicate send."
+            echo "$slot digest already accepted on $today; skipping duplicate send."
           fi
 
           echo "today=$today" >> "$GITHUB_OUTPUT"
           echo "is_daily=$is_daily" >> "$GITHUB_OUTPUT"
+          echo "slot=$slot" >> "$GITHUB_OUTPUT"
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
       - name: Run command against the tracker
@@ -137,6 +152,7 @@ jobs:
         if: steps.gate.outputs.skip != 'true' && steps.gate.outputs.is_daily == 'true'
         env:
           DIGEST_DATE: ${{ steps.gate.outputs.today }}
+          DIGEST_SLOT: ${{ steps.gate.outputs.slot }}
           EVENT_NAME: ${{ github.event_name }}
           RUN_ID: ${{ github.run_id }}
         run: |
@@ -148,9 +164,10 @@ jobs:
 
           record = {
               "date": os.environ["DIGEST_DATE"],
+              "slot": os.environ["DIGEST_SLOT"],
               "runId": int(os.environ["RUN_ID"]),
               "acceptedAt": datetime.now(timezone.utc).isoformat(),
-              "source": "schedule" if os.environ["EVENT_NAME"] == "schedule" else "manual_pipeline",
+              "source": f"scheduled_{os.environ['DIGEST_SLOT']}" if os.environ["EVENT_NAME"] == "schedule" else "manual_pipeline",
           }
           path = Path("state/whatsapp_daily_digest.json")
           path.parent.mkdir(parents=True, exist_ok=True)

@@ -288,10 +288,8 @@ def pipeline_digest(tracker: Path) -> str:
     )[:5]
 
     _postings_text, verified_count, unverified_count = new_postings_section(tracker)
-    _failed_text, tracker_failed_count = failed_sources_summary(tracker)
     discovery_count = verified_count + unverified_count
     lines.append(f"Discovery items to review: {discovery_count}")
-    lines.append(f"Tracker failed source queue: {tracker_failed_count}")
 
     if upcoming:
         next_job = upcoming[0]
@@ -317,10 +315,6 @@ def pipeline_digest(tracker: Path) -> str:
             f"{monitor['comparable']} of {monitor['configuredSources']} comparable | "
             f"{monitor['unresolved']} incomplete checks"
         )
-
-    lines.append("")
-    lines.append("Open tracker:")
-    lines.append(TRACKER_URL)
 
     return "\n".join(lines)
 

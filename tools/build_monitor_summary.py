@@ -46,6 +46,14 @@ def section(text: str, heading: str) -> str:
     return text[start:end]
 
 
+def first_section(text: str, *headings: str) -> str:
+    for heading in headings:
+        block = section(text, heading)
+        if block:
+            return block
+    return ""
+
+
 def table_rows(block: str) -> list[list[str]]:
     rows: list[list[str]] = []
     for line in block.splitlines():
@@ -108,13 +116,19 @@ def summary_from_reports(reports_dir: Path) -> dict[str, object]:
     for row in inventory_rows:
         if len(row) < 4:
             continue
+        expanded_format = len(row) >= 7
         inventory_sources[row[0]] = {
             "source": row[0],
             "status": row[1].split("—", 1)[0].strip(),
-            "lastReliable": row[2],
-            "url": markdown_url(row[3]),
-            "inventoryEvidence": row[1],
+            "lastReliable": row[6] if expanded_format else row[2],
+            "url": "" if expanded_format else markdown_url(row[3]),
+            "inventoryEvidence": row[5] if expanded_format else row[1],
         }
+    for row in table_rows(section(inventory_text, "Portal recovery handoff")):
+        if len(row) < 5 or row[0] not in inventory_sources:
+            continue
+        inventory_sources[row[0]]["url"] = markdown_url(row[1])
+        inventory_sources[row[0]]["lastReliable"] = row[-1]
     inventory_attempts = 0
     initial_attempts = 0
     inventory_retries = 0
@@ -155,28 +169,33 @@ def summary_from_reports(reports_dir: Path) -> dict[str, object]:
 
     if recovery:
         recovery_text = str(recovery["text"])
-        recovery_rows = table_rows(section(recovery_text, "Estado por fuente oficial"))
+        recovery_rows = table_rows(first_section(recovery_text, "Estado por fuente oficial", "Estado por fuente"))
         for row in recovery_rows:
             markers = [int(value) for value in re.findall(r"\bP(\d+)\b", " ".join(row), re.I)]
             recovery_attempts += max(markers) if markers else 1
             if len(row) >= 4:
                 base = inventory_sources.get(row[0], {})
+                expanded_format = len(row) >= 5
+                status = row[1].split("/", 1)[0].strip()
+                filter_evidence = row[2]
+                failure = row[3]
+                manual = row[4] if expanded_format else row[3]
                 source_rows.append(
                     {
                         "source": row[0],
-                        "status": row[1],
+                        "status": status,
                         "checked": recovery["checked"].isoformat(),
                         "lastReliable": base.get("lastReliable", "No reliable prior check recorded"),
-                        "failure": row[3],
-                        "recovery": f"Recovery report {recovery['path'].name}; {row[3]}",
-                        "manual": row[3],
-                        "filterEvidence": row[2],
+                        "failure": failure,
+                        "recovery": f"Recovery report {recovery['path'].name}; {filter_evidence}; {failure}",
+                        "manual": manual,
+                        "filterEvidence": filter_evidence,
                         "url": base.get("url", ""),
                     }
                 )
 
         counts = {}
-        for row in table_rows(section(recovery_text, "Resumen de recuperación")):
+        for row in table_rows(first_section(recovery_text, "Resumen de recuperación", "Resumen")):
             if len(row) >= 2 and row[1].isdigit():
                 counts[row[0].lower()] = int(row[1])
         retrieved = counts.get("retrieved", 0)

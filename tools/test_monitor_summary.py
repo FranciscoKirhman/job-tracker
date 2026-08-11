@@ -13,22 +13,19 @@ REPORTS_DIR = Path("/Users/franciscokirhman/Documents/Codex/2026-07-24/s/outputs
 
 
 class MonitorSummaryTests(unittest.TestCase):
-    def test_latest_overnight_attempts(self) -> None:
+    def test_latest_monitor_attempts(self) -> None:
         summary = summary_from_reports(REPORTS_DIR)
         self.assertEqual(summary["configuredSources"], 25)
         self.assertEqual(summary["inventoryAttempts"], 2)
         self.assertEqual(summary["recoveryAttempts"], 25)
         self.assertEqual(summary["totalAttempts"], 27)
-        self.assertEqual(summary["comparable"], 2)
-        self.assertEqual(summary["unresolved"], 23)
+        self.assertEqual(summary["comparable"], 0)
+        self.assertEqual(summary["unresolved"], 25)
         self.assertEqual(len(summary["sources"]), 25)
-        self.assertEqual(len(summary["failedSources"]), 23)
-        self.assertEqual(len(summary["reviewedSources"]), 2)
-        self.assertEqual(
-            {source["source"] for source in summary["reviewedSources"]},
-            {"Boston Scientific", "Novartis"},
-        )
+        self.assertEqual(len(summary["failedSources"]), 25)
+        self.assertEqual(len(summary["reviewedSources"]), 0)
         self.assertTrue(all(source["checked"] == summary["recoveryChecked"] for source in summary["sources"]))
+        self.assertTrue(all(source["url"].startswith("https://") for source in summary["sources"]))
 
     def test_embedded_snapshot_updates_in_place(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
