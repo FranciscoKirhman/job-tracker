@@ -1,0 +1,89 @@
+name: OpenAI usage reset watch
+
+# OpenAI Developer Community is the public official channel used to mirror
+# Codex team announcements. The script also searches that same official
+# community for posts that quote the Codex team's official staff account.
+on:
+  schedule:
+    # GitHub scheduled workflows are best-effort; the offset avoids the most
+    # congested exact-hour boundary while still checking hourly.
+    - cron: "17 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: openai-usage-reset-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check official OpenAI sources
+        id: scan
+        run: python3 tools/check_openai_usage_resets.py
+
+      # Commit pending state before sending. If Meta is temporarily down,
+      # the pending record remains and the next scheduled run retries it.
+      - name: Commit watcher state
+        run: |
+          set -e
+          git config user.name "jobs3-bot"
+          git config user.email "jobs3-bot@users.noreply.github.com"
+          git add state/openai_usage_reset_watch.json
+          if git diff --cached --quiet; then
+            echo "No watcher state changes."
+            exit 0
+          fi
+          git commit -m "Track OpenAI usage reset announcements"
+          target_branch="${{ github.event.repository.default_branch }}"
+          for attempt in 1 2 3 4 5; do
+            if git push origin "HEAD:$target_branch"; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt/5; rebasing onto latest main."
+            git fetch origin "$target_branch"
+            git rebase "origin/$target_branch"
+          done
+          echo "::error::All watcher-state push attempts failed."
+          exit 1
+
+      - name: Send WhatsApp alert
+        if: steps.scan.outputs.notify == 'true'
+        env:
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+          WHATSAPP_TO: ${{ secrets.WHATSAPP_TO }}
+          RESET_MESSAGE: ${{ steps.scan.outputs.message }}
+        run: python3 tools/send_whatsapp.py "$RESET_MESSAGE"
+
+      - name: Mark alert sent
+        if: steps.scan.outputs.notify == 'true'
+        env:
+          SENT_KEYS_JSON: ${{ steps.scan.outputs.keys_json }}
+        run: |
+          set -e
+          python3 tools/check_openai_usage_resets.py \
+            --finalize \
+            --finalize-keys-json "$SENT_KEYS_JSON"
+          git config user.name "jobs3-bot"
+          git config user.email "jobs3-bot@users.noreply.github.com"
+          git add state/openai_usage_reset_watch.json
+          git commit -m "Mark OpenAI usage reset alert sent"
+          target_branch="${{ github.event.repository.default_branch }}"
+          for attempt in 1 2 3 4 5; do
+            if git push origin "HEAD:$target_branch"; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt/5; rebasing onto latest main."
+            git fetch origin "$target_branch"
+            git rebase "origin/$target_branch"
+          done
+          echo "::error::All watcher-state finalization pushes failed."
+          exit 1

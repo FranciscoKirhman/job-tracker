@@ -33,6 +33,23 @@ In the repo's Settings → Secrets and variables → Actions, add:
 
 This alone enables the scheduled daily "pipeline" digest — `.github/workflows/whatsapp.yml` runs on a cron and sends it automatically. Two-way commands need step 3.
 
+The same three secrets also power `.github/workflows/openai-usage-reset-watch.yml`.
+That watcher checks the official OpenAI Developer Community announcements RSS
+and search endpoints hourly for a new ChatGPT Work or Codex usage-limit reset
+reference. It records pending and sent notices in
+`state/openai_usage_reset_watch.json`, so a temporary WhatsApp failure is
+retried and a successfully sent notice is not normally repeated. Delivery is
+at least once: if Meta accepts a message but the final state commit repeatedly
+fails, the next run may send a duplicate rather than silently lose the alert.
+The first run bootstraps the existing source history without sending old
+notices.
+
+The Codex team sometimes announces resets first through an official staff post
+on X and the Developer Community may mirror or quote it afterward. This watch
+validates quoted `@thsottiaux` status links through X's public oEmbed metadata
+before accepting them. It is therefore an official-source signal monitor, not
+a guarantee that every social post will be indexed immediately.
+
 ## 3. Cloudflare Worker (for receiving your replies)
 
 1. Create a free account at [cloudflare.com](https://cloudflare.com) if needed.
