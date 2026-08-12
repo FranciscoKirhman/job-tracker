@@ -1,7 +1,7 @@
 {
-  "date": "2026-08-11",
-  "slot": "afternoon",
-  "runId": 31523830438,
-  "acceptedAt": "2026-08-11T18:39:19.311938+00:00",
-  "source": "manual_pipeline"
+  "date": "2026-08-12",
+  "slot": "morning",
+  "runId": 31602610938,
+  "acceptedAt": "2026-08-12T13:40:29.511400+00:00",
+  "source": "scheduled_morning"
 }
