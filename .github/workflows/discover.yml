@@ -75,7 +75,7 @@ jobs:
           # sync_market_history.py are: it hits LinkedIn/Workday over the
           # network (kept deliberately low-volume per the linkedin-search
           # skill's own ToS caution, see the cron comment above) and, when
-          # it finds a high-fit posting, fires a WhatsApp alert as a side
+          # it finds a title-relevant posting, fires a WhatsApp review alert as a side
           # effect -- rerunning it on every retry could re-alert Francisco
           # for the same posting. So instead of resetting to a fresh
           # checkout and rerunning discovery, retry by rebasing this run's

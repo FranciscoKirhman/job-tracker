@@ -9,15 +9,10 @@ on:
   repository_dispatch:
     types: [mobile_sync]
 
-# Rapid consecutive swipes (no confirm dialog to slow them down anymore)
-# fire near-simultaneous repository_dispatch events. Without this, two runs
-# can both check out main, commit locally, and race on `git push` -- the
-# loser gets a plain "! [rejected] ... (fetch first)" and the swipe is
-# silently dropped. Serializing on one queue (not cancelling in-progress
-# runs) means every swipe still lands, just one push at a time.
-concurrency:
-  group: mobile-sync-push
-  cancel-in-progress: false
+# GitHub concurrency retains at most one pending run per group, so a burst of
+# phone swipes can replace a queued event even when cancel-in-progress is false.
+# Let every dispatch run. The fresh-checkout retry loop below serializes the
+# actual writes safely when pushes race.
 
 permissions:
   contents: write

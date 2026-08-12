@@ -15,10 +15,11 @@ Sources:
     configured for Abbott (site ID confirmed by hand); add more companies to
     WORKDAY_SOURCES as their tenant/site IDs are discovered.
 
-High-fit finds (score >= HIGH_FIT_THRESHOLD) get an immediate WhatsApp alert
-and are marked "seen" in state/market_history_seen.json right away, so the
-next scheduled digest doesn't repeat them. Everything else just lands in
-MARKET_HISTORY for the regular daily digest to report.
+Title-relevant finds get an immediate WhatsApp review alert and are marked
+"seen" in state/market_history_seen.json so the next scheduled digest does not
+repeat them. Every find remains discovery evidence in MARKET_HISTORY. Discovery
+never creates an application record or presents title overlap as a Jobs3 fit
+evaluation; that requires the complete posting and an honest Master CV review.
 """
 
 from __future__ import annotations
@@ -217,7 +218,7 @@ FIT_KEYWORDS = {
     "remote": 1,
     "remoto": 1,
 }
-HIGH_FIT_THRESHOLD = 7
+TITLE_RELEVANCE_ALERT_THRESHOLD = 7
 
 
 def _normalize_for_match(text: str) -> str:
@@ -247,7 +248,7 @@ def compute_fit(title: str) -> float:
     # Any "<medical/scientific/science> liaison" title, or the bare "MSL"
     # abbreviation as a whole word, is a near-exact match for Francisco's core
     # target role regardless of exact wording -- always push past the
-    # high-fit threshold, independent of the additive keyword scoring below.
+    # title relevance alert threshold, independent of additive scoring below.
     has_liaison_phrase = "liaison" in lowered and any(
         word in lowered for word in ("medical", "scientific", "science")
     )
@@ -438,57 +439,6 @@ def already_tracked(entry: dict[str, Any], tracked_keys: set[str]) -> bool:
     return False
 
 
-SAVED_DATA_PATTERN = re.compile(
-    r"(// TRACKER_DATA_START\s*\nconst SAVED_DATA\s*=\s*)(\[[\s\S]*?\])(\s*;\s*\n// TRACKER_DATA_END)"
-)
-
-
-def make_todo_record(entry: dict[str, Any], fit_score: float) -> dict[str, Any]:
-    today = datetime.now(timezone.utc).astimezone().date().isoformat()
-    unique_suffix = abs(hash((entry["company"].casefold(), entry["title"].casefold()))) % 1000
-    return {
-        "id": f"JOB_{int(datetime.now(timezone.utc).timestamp() * 1000)}_{unique_suffix:03d}",
-        "priority": "HIGH",
-        "company": entry["company"],
-        "companyType": "",
-        "role": entry["title"],
-        "location": entry.get("location", ""),
-        "category": "",
-        "jobId": entry.get("jobId", ""),
-        "posted": "",
-        "deadline": "",
-        "status": "todo",
-        "appliedDate": "",
-        "replyDate": "",
-        "rejectedDate": "",
-        "interviewDate": "",
-        "interviews": [],
-        "requirements": [],
-        "responsibilities": [],
-        "myMatch": [],
-        "gaps": [],
-        "keywords": [],
-        "fitScore": round(fit_score, 1),
-        "cvVersion": "",
-        "coverLetter": "",
-        "folderPath": "",
-        "links": entry.get("url", ""),
-        "strategicNotes": "",
-        "jobDescription": entry.get("details", ""),
-        "createdAt": today,
-    }
-
-
-def add_todo_records(html: str, records: list[dict[str, Any]]) -> str:
-    match = SAVED_DATA_PATTERN.search(html)
-    if not match:
-        raise RuntimeError("SAVED_DATA block not found in tracker")
-    jobs = json.loads(match.group(2))
-    jobs.extend(records)
-    serialized = json.dumps(jobs, ensure_ascii=False, indent=2)
-    return html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
-
-
 def main() -> int:
     found: list[dict[str, Any]] = []
     for query in LINKEDIN_QUERIES:
@@ -528,31 +478,39 @@ def main() -> int:
     serialized = json.dumps(merged, ensure_ascii=False, indent=2)
     html = html[: match.start()] + match.group(1) + serialized + match.group(3) + html[match.end() :]
 
-    high_fit = [(e, compute_fit(e["title"])) for e in new_entries]
-    high_fit = [(e, score) for e, score in high_fit if score >= HIGH_FIT_THRESHOLD]
-    high_fit.sort(key=lambda pair: pair[1], reverse=True)
+    review_candidates = [(e, compute_fit(e["title"])) for e in new_entries]
+    review_candidates = [
+        (e, score)
+        for e, score in review_candidates
+        if score >= TITLE_RELEVANCE_ALERT_THRESHOLD
+    ]
+    review_candidates.sort(key=lambda pair: pair[1], reverse=True)
 
-    print(f"Added {len(new_entries)} new posting(s), {len(high_fit)} high-fit (>= {HIGH_FIT_THRESHOLD}).")
-
-    if high_fit:
-        todo_records = [make_todo_record(entry, score) for entry, score in high_fit]
-        html = add_todo_records(html, todo_records)
-        print(f"Auto-added {len(todo_records)} high-fit posting(s) to 'Por postular'.")
+    print(
+        f"Added {len(new_entries)} new posting(s), "
+        f"{len(review_candidates)} title-relevant candidate(s) for review."
+    )
 
     TRACKER_PATH.write_text(html, encoding="utf-8")
 
-    if high_fit:
+    if review_candidates:
         STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
         state = set()
         if STATE_PATH.exists():
             state = set(json.loads(STATE_PATH.read_text(encoding="utf-8")))
-        for entry, _ in high_fit:
+        for entry, _ in review_candidates:
             state.add(entry_key(entry))
         STATE_PATH.write_text(json.dumps(sorted(state), ensure_ascii=False, indent=2), encoding="utf-8")
 
-        lines = [f"Alerta: {len(high_fit)} puesto(s) nuevo(s) de alto fit, agregados a Por postular:"]
-        for entry, score in high_fit[:5]:
-            lines.append(f"- {entry['company']}: {entry['title']} (fit {score:.0f}/10) {entry['url']}")
+        lines = [
+            f"Jobs3 discovery: {len(review_candidates)} candidato(s) nuevo(s) para revisar.",
+            "No es una evaluación de fit y no se agregó ninguna postulación al tracker.",
+        ]
+        for entry, score in review_candidates[:5]:
+            lines.append(
+                f"• {entry['company']}: {entry['title']} "
+                f"(relevancia de título {score:.0f}/10) {entry['url']}"
+            )
         sync_line = last_local_sync_line()
         if sync_line:
             lines.append("")

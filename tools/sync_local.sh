@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Periodic MARKET_HISTORY sync between the local live tracker and this repo.
+# Publish the canonical application snapshot and synchronize discovery metadata
+# between the local live tracker and this repo.
 # Run by a launchd job (see docs/LOCAL_SYNC_SETUP.md) so new postings found
 # either locally or by cloud automation reach both copies without manual steps.
 set -euo pipefail
@@ -60,6 +61,11 @@ if [ -z "$last_heartbeat_epoch" ] || [ $((now_epoch - last_heartbeat_epoch)) -ge
 fi
 
 for attempt in 1 2 3; do
+  canonical_output=$(python3 tools/publish_canonical_snapshot.py \
+    --canonical "$LOCAL_TRACKER" \
+    --repo "$REPO_DIR/francisco-job-tracker-2026.html")
+  echo "$canonical_output"
+
   if [ "${#heartbeat_args[@]}" -gt 0 ]; then
     sync_output=$(python3 tools/sync_market_history.py --local "$LOCAL_TRACKER" --repo "$REPO_DIR/francisco-job-tracker-2026.html" --heartbeat)
   else
@@ -75,7 +81,9 @@ for attempt in 1 2 3; do
     exit 0
   fi
 
-  if echo "$sync_output" | grep -q "^REPO_CHANGED=1"; then
+  if echo "$canonical_output" | grep -q "^CANONICAL_CHANGED=1"; then
+    commit_msg="Local sync: publish canonical application snapshot"
+  elif echo "$sync_output" | grep -q "^REPO_CHANGED=1"; then
     commit_msg="Local sync: MARKET_HISTORY/DISCARDED_POSTINGS updated from local tracker"
   else
     commit_msg="Local sync: heartbeat, no data changes"

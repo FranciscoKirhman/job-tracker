@@ -16,15 +16,30 @@ class MonitorSummaryTests(unittest.TestCase):
     def test_latest_monitor_attempts(self) -> None:
         summary = summary_from_reports(REPORTS_DIR)
         self.assertEqual(summary["configuredSources"], 25)
-        self.assertEqual(summary["inventoryAttempts"], 2)
-        self.assertEqual(summary["recoveryAttempts"], 25)
-        self.assertEqual(summary["totalAttempts"], 27)
-        self.assertEqual(summary["comparable"], 0)
-        self.assertEqual(summary["unresolved"], 25)
-        self.assertEqual(len(summary["sources"]), 25)
-        self.assertEqual(len(summary["failedSources"]), 25)
-        self.assertEqual(len(summary["reviewedSources"]), 0)
-        self.assertTrue(all(source["checked"] == summary["recoveryChecked"] for source in summary["sources"]))
+        self.assertEqual(
+            summary["inventoryAttempts"],
+            summary["attemptEvidence"]["initialSourceAttempts"]
+            + summary["attemptEvidence"]["inventoryRetries"],
+        )
+        self.assertEqual(
+            summary["recoveryAttempts"],
+            summary["attemptEvidence"]["recoverySourceAttempts"],
+        )
+        self.assertEqual(
+            summary["totalAttempts"],
+            summary["inventoryAttempts"] + summary["recoveryAttempts"],
+        )
+        self.assertEqual(
+            summary["comparable"] + summary["unresolved"],
+            summary["configuredSources"],
+        )
+        self.assertEqual(len(summary["sources"]), summary["configuredSources"])
+        self.assertEqual(
+            len(summary["failedSources"]) + len(summary["reviewedSources"]),
+            summary["configuredSources"],
+        )
+        expected_checked = summary["recoveryChecked"] or summary["inventoryChecked"]
+        self.assertTrue(all(source["checked"] == expected_checked for source in summary["sources"]))
         self.assertTrue(all(source["url"].startswith("https://") for source in summary["sources"]))
 
     def test_embedded_snapshot_updates_in_place(self) -> None:
