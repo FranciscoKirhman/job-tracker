@@ -1,6 +1,17 @@
 {
   "initialized": true,
-  "pending": {},
+  "pending": {
+    "x-status:2087706104814023111": {
+      "excerpt": "🚨 Reset de ChatGPT Work/Codex Estado: anuncio oficial de reset global inminente; Tibo indicó que el reset por superar 15M de usuarios aterrizaría dentro de la siguiente hora. Hora Chile: publicación 2026-08-12 21:01:37 America/Santiago; ejecución exacta no indicada por la fuente. Alcance: todos los usuarios pagados de ChatGPT Work y Codex, según el anuncio. URL oficial: https://x.com/thsottiaux/status/2087706104814023111 Anuncio previo relacionado: https://x.com/thsottiaux/status/2087423996115681767 Evidencia de autor: X oEmbed devolvió author_url exactamente https://x.com/thsottiaux y la URL canónica coincidió. Rutas fallidas relevantes: ninguna para esta verificación; los reportes de comunidad y medidores de usuarios no se usaron como confirmación.",
+      "key": "x-status:2087706104814023111",
+      "message": "🚨 Reset de ChatGPT Work/Codex\nEstado: anuncio oficial de reset global inminente; Tibo indicó que el reset por superar 15M de usuarios aterrizaría dentro de la siguiente hora.\nHora Chile: publicación 2026-08-12 21:01:37 America/Santiago; ejecución exacta no indicada por la fuente.\nAlcance: todos los usuarios pagados de ChatGPT Work y Codex, según el anuncio.\nURL oficial: https://x.com/thsottiaux/status/2087706104814023111\nAnuncio previo relacionado: https://x.com/thsottiaux/status/2087423996115681767\nEvidencia de autor: X oEmbed devolvió author_url exactamente https://x.com/thsottiaux y la URL canónica coincidió.\nRutas fallidas relevantes: ninguna para esta verificación; los reportes de comunidad y medidores de usuarios no se usaron como confirmación.",
+      "official_post": "https://x.com/thsottiaux/status/2087706104814023111",
+      "published_at": "2026-08-13T01:01:37Z",
+      "source": "Luna official-source research; X author verified by oEmbed",
+      "title": "Codex Work reset 15M anunciado",
+      "url": "https://x.com/thsottiaux/status/2087706104814023111"
+    }
+  },
   "seen": {
     "community-post:1850335": {
       "excerpt": "Just saw that following a brief Codex outage the rate limits have been reset: https://x.com/thsottiaux/status/1986166501435711936 x.com https://x.com/thsottiaux/status/1986166501435711936 Tibo https://x.com/thsottiaux/status/1986166501435711936 @thsottiaux Codex outage resolved. We suffered a min...",
