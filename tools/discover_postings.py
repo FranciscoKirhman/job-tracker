@@ -127,7 +127,16 @@ WORKDAY_SOURCES = [
     {"company": "AstraZeneca", "tenant": "astrazeneca", "wd": "wd3", "site": "Careers"},
     {"company": "Sanofi", "tenant": "sanofi", "wd": "wd3", "site": "SanofiCareers"},
 ]
-WORKDAY_KEYWORDS = ["Medical Science Liaison", "Medical Affairs", "Clinical", "Regulatory"]
+WORKDAY_KEYWORDS = [
+    "Medical Science Liaison",
+    "Medical Scientific Liaison",
+    "MSL",
+    "Medical Affairs",
+    "Clinical",
+    "Regulatory",
+]
+WORKDAY_PAGE_LIMIT = 20
+WORKDAY_MAX_PAGES = 10
 
 # "Remote" alone doesn't mean Chile-eligible -- a lot of Workday postings are
 # "<Country> - Remote", meaning remote WITHIN that country's borders (its own
@@ -324,49 +333,85 @@ def fetch_linkedin(query: str, location: str) -> list[dict[str, Any]]:
 
 def fetch_workday(source: dict[str, str], keyword: str) -> list[dict[str, Any]]:
     url = f"https://{source['tenant']}.{source['wd']}.myworkdayjobs.com/wday/cxs/{source['tenant']}/{source['site']}/jobs"
-    body = json.dumps({"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": keyword}).encode()
-    request = urllib.request.Request(
-        url, data=body, method="POST", headers={"Content-Type": "application/json"}
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            payload = json.loads(response.read().decode())
-    except (urllib.error.URLError, json.JSONDecodeError) as exc:
-        print(f"Workday search failed for {source['company']} / {keyword!r}: {exc}", file=sys.stderr)
-        return []
-
     stamp = now_stamp()
     entries = []
-    for job in payload.get("jobPostings", []):
-        location = job.get("locationsText", "")
-        title = job.get("title", "")
-        # Workday's CxS search has no reliable public location facet, so it
-        # returns postings for every country the company hires in. Filter
-        # client-side to Chile/remote -- otherwise this floods results with
-        # e.g. Malaysia, Uzbekistan, Algeria postings irrelevant to Francisco.
-        # "Remote" alone isn't enough (see _is_chile_viable_location): a lot
-        # of these are "<Country> - Remote", domestic remote work scoped to
-        # that country, not open to a Chile-based candidate.
-        if not _is_chile_viable_location(location):
-            continue
-        if _has_us_region_restriction(title):
-            continue
-        path = job.get("externalPath", "")
-        entries.append(
+    seen_paths: set[str] = set()
+
+    for page_number in range(WORKDAY_MAX_PAGES):
+        offset = page_number * WORKDAY_PAGE_LIMIT
+        body = json.dumps(
             {
-                "status": "open",
-                "company": source["company"],
-                "title": job.get("title", ""),
-                "jobId": f"wd-{source['tenant']}-{path.rsplit('_', 1)[-1] if '_' in path else path}",
-                "location": location,
-                "firstSeen": stamp,
-                "lastConfirmed": stamp,
-                "removedOn": "",
-                "source": "Workday careers site",
-                "url": f"https://{source['tenant']}.{source['wd']}.myworkdayjobs.com/{source['site']}{path}",
-                "details": f"Found via automated Workday search for {keyword!r}.",
+                "appliedFacets": {},
+                "limit": WORKDAY_PAGE_LIMIT,
+                "offset": offset,
+                "searchText": keyword,
             }
+        ).encode()
+        request = urllib.request.Request(
+            url, data=body, method="POST", headers={"Content-Type": "application/json"}
         )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                payload = json.loads(response.read().decode())
+        except (urllib.error.URLError, json.JSONDecodeError) as exc:
+            print(
+                f"Workday search failed for {source['company']} / {keyword!r} "
+                f"at offset {offset}: {exc}",
+                file=sys.stderr,
+            )
+            break
+
+        jobs = payload.get("jobPostings", [])
+        if not jobs:
+            break
+
+        new_paths_on_page = 0
+        for job in jobs:
+            path = job.get("externalPath", "")
+            if path and path in seen_paths:
+                continue
+            if path:
+                seen_paths.add(path)
+                new_paths_on_page += 1
+
+            location = job.get("locationsText", "")
+            title = job.get("title", "")
+            # Workday's CxS search has no reliable public location facet, so it
+            # returns postings for every country the company hires in. Filter
+            # client-side to Chile/remote -- otherwise this floods results with
+            # e.g. Malaysia, Uzbekistan, Algeria postings irrelevant to Francisco.
+            # "Remote" alone isn't enough (see _is_chile_viable_location): a lot
+            # of these are "<Country> - Remote", domestic remote work scoped to
+            # that country, not open to a Chile-based candidate.
+            if not _is_chile_viable_location(location):
+                continue
+            if _has_us_region_restriction(title):
+                continue
+            entries.append(
+                {
+                    "status": "open",
+                    "company": source["company"],
+                    "title": title,
+                    "jobId": f"wd-{source['tenant']}-{path.rsplit('_', 1)[-1] if '_' in path else path}",
+                    "location": location,
+                    "firstSeen": stamp,
+                    "lastConfirmed": stamp,
+                    "removedOn": "",
+                    "source": "Workday careers site",
+                    "url": f"https://{source['tenant']}.{source['wd']}.myworkdayjobs.com/{source['site']}{path}",
+                    "details": f"Found via automated Workday search for {keyword!r}.",
+                }
+            )
+
+        total = payload.get("total")
+        if len(jobs) < WORKDAY_PAGE_LIMIT:
+            break
+        if isinstance(total, int) and total > 0 and offset + len(jobs) >= total:
+            break
+        # Some Workday tenants ignore offset and repeat page one. Do not loop
+        # over the same results indefinitely when that happens.
+        if page_number > 0 and new_paths_on_page == 0:
+            break
     return entries
 
 
