@@ -1,7 +1,7 @@
 {
-  "date": "2026-08-23",
-  "slot": "afternoon",
-  "runId": 32656482247,
-  "acceptedAt": "2026-08-23T17:57:22.018675+00:00",
-  "source": "scheduled_afternoon"
+  "date": "2026-08-24",
+  "slot": "morning",
+  "runId": 32731062685,
+  "acceptedAt": "2026-08-24T13:10:01.243602+00:00",
+  "source": "scheduled_morning"
 }
