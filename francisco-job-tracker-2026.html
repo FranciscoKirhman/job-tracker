@@ -811,8 +811,8 @@ html{scroll-padding-top:96px;}
       </aside>
     </div>
     <section class="sankey-card" aria-labelledby="jobSearchFlowTitle">
-      <div class="sankey-head"><div><h3 id="jobSearchFlowTitle">Flujo de la búsqueda laboral</h3><p>Cómo se distribuyen hoy todas las oportunidades registradas. Los estados reflejan evidencia del tracker; el silencio permanece en espera.</p></div><div class="sankey-total" id="sankeyTotal"><b>0</b> registradas</div></div>
-      <div class="sankey-wrap"><svg class="sankey-svg" id="jobSearchSankey" viewBox="0 0 1000 380" role="img" aria-labelledby="jobSearchFlowTitle jobSearchFlowDesc"><desc id="jobSearchFlowDesc">Diagrama Sankey de oportunidades registradas, por postular, ingresadas al pipeline y sus estados actuales.</desc></svg></div>
+      <div class="sankey-head"><div><h3 id="jobSearchFlowTitle">Flujo de la búsqueda laboral</h3><p>Proceso de postulación por entrevistas completadas. Los rechazos se ubican en la etapa que se alcanzó; el silencio permanece en espera.</p></div><div class="sankey-total" id="sankeyTotal"><b>0</b> registradas</div></div>
+      <div class="sankey-wrap"><svg class="sankey-svg" id="jobSearchSankey" viewBox="0 0 1200 460" role="img" aria-labelledby="jobSearchFlowTitle jobSearchFlowDesc"><desc id="jobSearchFlowDesc">Diagrama Sankey de oportunidades registradas, postulaciones, entrevistas completadas y rechazos por etapa alcanzada.</desc></svg></div>
       <div class="sankey-foot"><span><i style="background:#fbbf24"></i>Por postular</span><span><i style="background:#4f8ef7"></i>En espera</span><span><i style="background:#22d3ee"></i>Entrevista</span><span><i style="background:#34d399"></i>Oferta</span><span><i style="background:#f87171"></i>Rechazada</span><span><i style="background:#8a97ad"></i>Archivada / no perseguida</span></div>
     </section>
     <details class="jobs3-feed" id="jobs3AutomationFeed"><summary>Actualizaciones automáticas incorporadas al tracker</summary><div class="jobs3-feed-grid" id="jobs3AutomationFeedGrid"><div class="jobs3-feed-empty">El servicio local está disponible, pero todavía no hay actualizaciones automáticas.</div></div></details>
@@ -17023,40 +17023,46 @@ function renderJobSearchSankey(){
   if(!svg)return;
   const counts={todo:0,applied:0,interview:0,offer:0,rejected:0,withdrawn:0};
   S.jobs.forEach(j=>{const s=effectiveStatus(j);if(Object.prototype.hasOwnProperty.call(counts,s))counts[s]++;});
-  const total=S.jobs.length,pipeline=counts.applied+counts.interview+counts.offer+counts.rejected,scale=total?280/total:0,minNode=count=>count?Math.max(6,count*scale):0;
+  const total=S.jobs.length,pipeline=counts.applied+counts.interview+counts.offer+counts.rejected,scale=pipeline?220/pipeline:0,minNode=count=>count?Math.max(4,count*scale):0;
   if(totalEl)totalEl.innerHTML=`<b>${total}</b> registradas`;
-  if(!total){svg.innerHTML='<text x="500" y="190" text-anchor="middle" class="sankey-note">No hay oportunidades registradas.</text>';return;}
-  const left={x:40,y:50,w:24,h:280,label:'Registradas',value:total};
+  if(!total){svg.innerHTML='<text x="600" y="230" text-anchor="middle" class="sankey-note">No hay oportunidades registradas.</text>';return;}
+  const interviewCount=j=>ivDone(j);
+  const submitted=S.jobs.filter(j=>['applied','interview','offer','rejected'].includes(j.status));
+  const stage={};[0,1,2,3].forEach(n=>{stage[n]={rejected:0,active:0,reached:submitted.filter(j=>interviewCount(j)>=n).length};});
+  submitted.forEach(j=>{const n=Math.min(3,interviewCount(j));if(j.status==='rejected')stage[n].rejected++;else stage[n].active++;});
+  const firstReached=stage[1].reached,secondReached=stage[2].reached,thirdReached=stage[3].reached;
+  const left={x:40,y:82,w:24,h:Math.max(12,total*scale),label:'Registradas',value:total};
   const branches=[
     {key:'todo',label:'Por postular',value:counts.todo,color:'#fbbf24'},
     {key:'pipeline',label:'Postuladas',value:pipeline,color:'#bf5af2'},
     {key:'withdrawn',label:'Archivadas',value:counts.withdrawn,color:'#8a97ad'}
   ].filter(x=>x.value>0);
-  const branchGap=20,branchHeights=branches.map(x=>minNode(x.value));
+  const branchGap=24,branchHeights=branches.map(x=>minNode(x.value));
   const branchTotal=branchHeights.reduce((a,b)=>a+b,0)+Math.max(0,branches.length-1)*branchGap;
-  let branchY=(380-branchTotal)/2;
-  branches.forEach((x,i)=>{x.x=340;x.y=branchY;x.w=24;x.h=branchHeights[i];branchY+=x.h+branchGap;});
+  let branchY=(460-branchTotal)/2;
+  branches.forEach((x,i)=>{x.x=245;x.y=branchY;x.w=24;x.h=branchHeights[i];branchY+=x.h+branchGap;});
   const entered=branches.find(x=>x.key==='pipeline');
-  const outcomes=[
-    {key:'applied',label:'En espera',value:counts.applied,color:'#4f8ef7'},
-    {key:'interview',label:'Entrevista',value:counts.interview,color:'#22d3ee'},
-    {key:'offer',label:'Oferta',value:counts.offer,color:'#34d399'},
-    {key:'rejected',label:'Rechazada',value:counts.rejected,color:'#f87171'}
-  ].filter(x=>x.value>0);
-  const outGap=14,outHeights=outcomes.map(x=>minNode(x.value));
-  const outTotal=outHeights.reduce((a,b)=>a+b,0)+Math.max(0,outcomes.length-1)*outGap;
-  let outY=(380-outTotal)/2;
-  outcomes.forEach((x,i)=>{x.x=760;x.y=outY;x.w=24;x.h=outHeights[i];outY+=x.h+outGap;});
-  const path=(x1,y1,x2,y2,width,color)=>`<path class="sankey-flow" d="M ${x1} ${y1} C ${x1+110} ${y1}, ${x2-110} ${y2}, ${x2} ${y2}" stroke="${color}" stroke-width="${Math.max(2,width)}"><title>${Math.round(width/scale)||0} oportunidades</title></path>`;
+  const noInterviewActive={x:480,y:52,w:24,h:minNode(stage[0].active),label:'En espera sin entrevista',value:stage[0].active,color:'#4f8ef7'};
+  const noInterviewRejected={x:480,y:190,w:24,h:minNode(stage[0].rejected),label:'Rechazo antes de 1ra',value:stage[0].rejected,color:'#f87171'};
+  const first={x:480,y:330,w:24,h:minNode(firstReached),label:'1ra entrevista',value:firstReached,color:'#22d3ee'};
+  const afterFirstActive={x:745,y:300,w:24,h:minNode(stage[1].active),label:'Sigue tras 1ra',value:stage[1].active,color:'#4f8ef7'};
+  const afterFirstRejected={x:745,y:344,w:24,h:minNode(stage[1].rejected),label:'Rechazo tras 1ra',value:stage[1].rejected,color:'#f87171'};
+  const second={x:745,y:395,w:24,h:minNode(secondReached),label:'2da entrevista',value:secondReached,color:'#22d3ee'};
+  const afterSecondActive={x:1010,y:370,w:24,h:minNode(stage[2].active),label:'Sigue tras 2da',value:stage[2].active,color:'#4f8ef7'};
+  const path=(x1,y1,x2,y2,width,color,value)=>`<path class="sankey-flow" d="M ${x1} ${y1} C ${x1+88} ${y1}, ${x2-88} ${y2}, ${x2} ${y2}" stroke="${color}" stroke-width="${Math.max(2,width)}"><title>${value} oportunidades</title></path>`;
   let html='';
   let leftCursor=left.y;
-  branches.forEach(x=>{const w=x.value*scale;html+=path(left.x+left.w,leftCursor+w/2,x.x,x.y+x.h/2,w,x.color);leftCursor+=w;});
-  if(entered){let enteredCursor=entered.y;outcomes.forEach(x=>{const w=x.value*scale;html+=path(entered.x+entered.w,enteredCursor+w/2,x.x,x.y+x.h/2,w,x.color);enteredCursor+=w;});}
+  branches.forEach(x=>{const w=x.value*scale;html+=path(left.x+left.w,leftCursor+w/2,x.x,x.y+x.h/2,w,x.color,x.value);leftCursor+=w;});
+  if(entered){let submittedCursor=entered.y;[[noInterviewActive,stage[0].active],[noInterviewRejected,stage[0].rejected],[first,firstReached]].forEach(([node,value])=>{if(value){const w=value*scale;html+=path(entered.x+entered.w,submittedCursor+w/2,node.x,node.y+node.h/2,w,node.color,value);submittedCursor+=w;}});}
+  if(first){let firstCursor=first.y;[[afterFirstActive,stage[1].active],[afterFirstRejected,stage[1].rejected],[second,secondReached]].forEach(([node,value])=>{if(value){const w=value*scale;html+=path(first.x+first.w,firstCursor+w/2,node.x,node.y+node.h/2,w,node.color,value);firstCursor+=w;}});}
+  if(secondReached&&stage[2].active){const w=stage[2].active*scale;html+=path(second.x+second.w,second.y+w/2,afterSecondActive.x,afterSecondActive.y+afterSecondActive.h/2,w,afterSecondActive.color,stage[2].active);}
   const node=n=>`<rect class="sankey-node" x="${n.x}" y="${n.y}" width="${n.w}" height="${Math.max(2,n.h)}" fill="${n.color||'#bf5af2'}"></rect>`;
   const label=(n,side='right')=>{const x=side==='left'?n.x-14:n.x+n.w+14,anchor=side==='left'?'end':'start',y=n.y+n.h/2;return`<text x="${x}" y="${y-3}" text-anchor="${anchor}" class="sankey-value">${n.value}</text><text x="${x}" y="${y+17}" text-anchor="${anchor}" class="sankey-label">${n.label}</text>`;};
-  html+=node(left)+branches.map(node).join('')+outcomes.map(node).join('');
-  html+=label(left,'right')+branches.map(n=>label(n,'right')).join('')+outcomes.map(n=>label(n,'right')).join('');
-  html+='<text x="40" y="28" class="sankey-note">UNIVERSO</text><text x="340" y="28" class="sankey-note">CLASIFICACIÓN</text><text x="760" y="28" class="sankey-note">ESTADO DE POSTULACIÓN</text>';
+  const outcomeNodes=[noInterviewActive,noInterviewRejected,first,afterFirstActive,afterFirstRejected,second,afterSecondActive];
+  html+=node(left)+branches.map(node).join('')+outcomeNodes.filter(n=>n.value>0).map(node).join('');
+  html+=label(left,'right')+branches.map(n=>label(n,'right')).join('')+outcomeNodes.filter(n=>n.value>0).map(n=>label(n,'right')).join('');
+  html+=`<text x="1010" y="420" class="sankey-value">${stage[2].rejected}</text><text x="1036" y="420" class="sankey-label">rechazo tras 2da</text><text x="1010" y="444" class="sankey-value">${thirdReached}</text><text x="1036" y="444" class="sankey-label">3ra entrevista</text>`;
+  html+='<text x="40" y="42" class="sankey-note">UNIVERSO</text><text x="245" y="42" class="sankey-note">CLASIFICACIÓN</text><text x="480" y="30" class="sankey-note">ANTES / 1RA ENTREVISTA</text><text x="745" y="280" class="sankey-note">DESPUÉS DE 1RA</text><text x="1010" y="350" class="sankey-note">DESPUÉS DE 2DA</text>';
   svg.innerHTML=html;
 }
 
