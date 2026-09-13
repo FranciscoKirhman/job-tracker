@@ -62,16 +62,16 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sankey-head p{font-size:.72rem;color:var(--text3);line-height:1.45;max-width:720px;}
 .sankey-total{font-size:.66rem;color:var(--text3);white-space:nowrap;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;padding:7px 10px;}
 .sankey-total b{color:var(--text);font-size:.8rem;margin-right:3px;}
-.sankey-timing{display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 14px;padding:9px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
-.sankey-timing span{font-size:.68rem;color:var(--text3);}.sankey-timing b{display:block;color:var(--text);font-size:1rem;margin-bottom:2px;}
+.sankey-timing{display:flex;gap:22px;flex-wrap:wrap;margin:4px 0 14px;padding:9px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.sankey-timing span{display:flex;align-items:baseline;gap:6px;font-size:.7rem;color:var(--text3);}.sankey-timing b{color:var(--text);font-size:1rem;}
 .sankey-wrap{width:100%;overflow-x:auto;overscroll-behavior-inline:contain;}
-.sankey-svg{display:block;width:100%;min-width:760px;height:auto;min-height:300px;}
+.sankey-svg{display:block;width:100%;min-width:760px;height:auto;min-height:280px;}
 .sankey-flow{fill:none;stroke-opacity:.32;transition:stroke-opacity .16s;}
 .sankey-flow:hover{stroke-opacity:.62;}
 .sankey-node{rx:7;ry:7;}
-.sankey-label{fill:var(--text2);font-size:14px;font-weight:650;}
-.sankey-value{fill:var(--text);font-size:20px;font-weight:800;}
-.sankey-note{fill:var(--text3);font-size:12px;}
+.sankey-label{fill:var(--text2);font-size:12px;font-weight:650;}
+.sankey-value{fill:var(--text);font-size:17px;font-weight:800;}
+.sankey-note{fill:var(--text3);font-size:11px;font-weight:700;letter-spacing:.06em;}
 .sankey-foot{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--text3);font-size:.66rem;}
 .sankey-foot span{display:flex;align-items:center;gap:5px;}
 .sankey-foot i{width:8px;height:8px;border-radius:2px;display:inline-block;}
@@ -815,7 +815,7 @@ html{scroll-padding-top:96px;}
     <section class="sankey-card" aria-labelledby="jobSearchFlowTitle">
       <div class="sankey-head"><div><h3 id="jobSearchFlowTitle">Flujo de la búsqueda laboral</h3><p>Proceso de postulación por entrevistas completadas. El silencio permanece en espera.</p></div><div class="sankey-total" id="sankeyTotal"><b>0</b> registradas</div></div>
       <div class="sankey-timing" id="sankeyTiming" aria-label="Tiempos medianos observados"></div>
-      <div class="sankey-wrap"><svg class="sankey-svg" id="jobSearchSankey" viewBox="0 0 1200 460" role="img" aria-labelledby="jobSearchFlowTitle jobSearchFlowDesc"><desc id="jobSearchFlowDesc">Diagrama Sankey de oportunidades registradas, postulaciones, entrevistas completadas y rechazos por etapa alcanzada.</desc></svg></div>
+      <div class="sankey-wrap"><svg class="sankey-svg" id="jobSearchSankey" viewBox="0 0 1200 420" role="img" aria-labelledby="jobSearchFlowTitle jobSearchFlowDesc"><desc id="jobSearchFlowDesc">Diagrama Sankey de oportunidades registradas, postulaciones, entrevistas completadas y rechazos por etapa alcanzada.</desc></svg></div>
       <div class="sankey-foot"><span><i style="background:#fbbf24"></i>Por postular</span><span><i style="background:#4f8ef7"></i>En espera</span><span><i style="background:#22d3ee"></i>Entrevista</span><span><i style="background:#34d399"></i>Oferta</span><span><i style="background:#f87171"></i>Rechazada</span><span><i style="background:#8a97ad"></i>Archivada / no perseguida</span></div>
     </section>
     <details class="jobs3-feed" id="jobs3AutomationFeed"><summary>Actualizaciones automáticas incorporadas al tracker</summary><div class="jobs3-feed-grid" id="jobs3AutomationFeedGrid"><div class="jobs3-feed-empty">El servicio local está disponible, pero todavía no hay actualizaciones automáticas.</div></div></details>
@@ -17029,9 +17029,9 @@ function renderJobSearchSankey(){
   const total=S.jobs.length,pipeline=counts.applied+counts.interview+counts.offer+counts.rejected,scale=pipeline?220/pipeline:0,minNode=count=>count?Math.max(4,count*scale):0,timing=calcTiming();
   if(totalEl)totalEl.innerHTML=`<b>${total}</b> registradas`;
   if(timingEl)timingEl.innerHTML=[
-    {value:timing.mReply===null?'—':timing.mReply+' días',label:`primera respuesta · ${timing.nReply} casos`},
-    {value:timing.mIv===null?'—':timing.mIv+' días',label:`primera entrevista · ${timing.nIv} casos`},
-    {value:timing.mRej===null?'—':timing.mRej+' días',label:`rechazo · ${timing.nRej} con fecha`}
+    {value:timing.mReply===null?'—':timing.mReply+'d',label:'primera respuesta'},
+    {value:timing.mIv===null?'—':timing.mIv+'d',label:'primera entrevista'},
+    {value:timing.mRej===null?'—':timing.mRej+'d',label:'rechazo'}
   ].map(x=>`<span><b>${x.value}</b>${x.label}</span>`).join('');
   if(!total){svg.innerHTML='<text x="600" y="230" text-anchor="middle" class="sankey-note">No hay oportunidades registradas.</text>';return;}
   const interviewCount=j=>ivDone(j);
@@ -17045,17 +17045,17 @@ function renderJobSearchSankey(){
   ].filter(x=>x.value>0);
   const branchGap=24,branchHeights=branches.map(x=>minNode(x.value));
   const branchTotal=branchHeights.reduce((a,b)=>a+b,0)+Math.max(0,branches.length-1)*branchGap;
-  let branchY=(460-branchTotal)/2;
+  let branchY=(420-branchTotal)/2;
   branches.forEach((x,i)=>{x.x=245;x.y=branchY;x.w=24;x.h=branchHeights[i];branchY+=x.h+branchGap;});
   const entered=branches.find(x=>x.key==='pipeline');
   const rejectedBeforeFirst=submitted.filter(j=>j.status==='rejected'&&interviewCount(j)===0).length,rejectedAfterFirst=submitted.filter(j=>j.status==='rejected'&&interviewCount(j)===1).length;
   const activeAfterFirst=submitted.filter(j=>j.status!=='rejected'&&interviewCount(j)===1).length,activeAfterSecond=submitted.filter(j=>j.status!=='rejected'&&interviewCount(j)===2).length;
-  const waiting={x:480,y:60,w:24,h:minNode(counts.applied),label:'En espera',value:counts.applied,color:'#4f8ef7'};
-  const rejected={x:1010,y:180,w:24,h:minNode(counts.rejected),label:'Rechazos',value:counts.rejected,color:'#f87171'};
-  const first={x:480,y:330,w:24,h:minNode(firstReached),label:'Completaron 1ra',value:firstReached,color:'#22d3ee'};
-  const activeFirst={x:745,y:285,w:24,h:minNode(activeAfterFirst),label:'En proceso',value:activeAfterFirst,color:'#4f8ef7'};
-  const second={x:745,y:360,w:24,h:minNode(secondReached),label:'Completaron 2da',value:secondReached,color:'#22d3ee'};
-  const activeSecond={x:1010,y:370,w:24,h:minNode(activeAfterSecond),label:'En proceso',value:activeAfterSecond,color:'#4f8ef7'};
+  const waiting={x:480,y:76,w:24,h:minNode(counts.applied),label:'En espera',value:counts.applied,color:'#4f8ef7'};
+  const rejected={x:1010,y:132,w:24,h:minNode(counts.rejected),label:'Rechazos',value:counts.rejected,color:'#f87171'};
+  const first={x:480,y:300,w:24,h:minNode(firstReached),label:'1ra entrevista',value:firstReached,color:'#22d3ee'};
+  const activeFirst={x:745,y:248,w:24,h:minNode(activeAfterFirst),label:'En proceso',value:activeAfterFirst,color:'#4f8ef7'};
+  const second={x:745,y:330,w:24,h:minNode(secondReached),label:'2da entrevista',value:secondReached,color:'#22d3ee'};
+  const activeSecond={x:1010,y:318,w:24,h:minNode(activeAfterSecond),label:'En proceso',value:activeAfterSecond,color:'#4f8ef7'};
   const path=(x1,y1,x2,y2,width,color,value)=>`<path class="sankey-flow" d="M ${x1} ${y1} C ${x1+88} ${y1}, ${x2-88} ${y2}, ${x2} ${y2}" stroke="${color}" stroke-width="${Math.max(2,width)}"><title>${value} oportunidades</title></path>`;
   let html='';
   let leftCursor=left.y;
@@ -17067,8 +17067,8 @@ function renderJobSearchSankey(){
   const label=(n,side='right')=>{const x=side==='left'?n.x-14:n.x+n.w+14,anchor=side==='left'?'end':'start',y=n.y+n.h/2;return`<text x="${x}" y="${y-3}" text-anchor="${anchor}" class="sankey-value">${n.value}</text><text x="${x}" y="${y+17}" text-anchor="${anchor}" class="sankey-label">${n.label}</text>`;};
   html+=node(left)+branches.map(node).join('')+[waiting,rejected,first,activeFirst,second,activeSecond].filter(n=>n.value>0).map(node).join('');
   html+=label(left,'right')+branches.map(n=>label(n,'right')).join('')+[waiting,rejected,first,activeFirst,second,activeSecond].filter(n=>n.value>0).map(n=>label(n,'right')).join('');
-  html+=`<text x="1010" y="350" class="sankey-value">${thirdReached}</text><text x="1036" y="350" class="sankey-label">completaron 3ra</text>`;
-  html+='<text x="40" y="42" class="sankey-note">UNIVERSO</text><text x="245" y="42" class="sankey-note">CLASIFICACIÓN</text><text x="480" y="30" class="sankey-note">RESULTADOS / PRIMERA ENTREVISTA</text><text x="745" y="300" class="sankey-note">SEGUNDA ENTREVISTA</text><text x="1010" y="320" class="sankey-note">TERCERA ENTREVISTA</text>';
+  html+=`<text x="1010" y="284" class="sankey-value">${thirdReached}</text><text x="1036" y="284" class="sankey-label">3ra entrevista</text>`;
+  html+='<text x="40" y="34" class="sankey-note">UNIVERSO</text><text x="245" y="34" class="sankey-note">CLASIFICACIÓN</text><text x="480" y="34" class="sankey-note">PRIMERA ENTREVISTA</text><text x="745" y="34" class="sankey-note">SEGUNDA ENTREVISTA</text><text x="1010" y="34" class="sankey-note">TERCERA ENTREVISTA</text>';
   svg.innerHTML=html;
 }
 
