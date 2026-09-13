@@ -813,7 +813,7 @@ html{scroll-padding-top:96px;}
     <section class="sankey-card" aria-labelledby="jobSearchFlowTitle">
       <div class="sankey-head"><div><h3 id="jobSearchFlowTitle">Flujo de la búsqueda laboral</h3><p>Cómo se distribuyen hoy todas las oportunidades registradas. Los estados reflejan evidencia del tracker; el silencio permanece en espera.</p></div><div class="sankey-total" id="sankeyTotal"><b>0</b> registradas</div></div>
       <div class="sankey-wrap"><svg class="sankey-svg" id="jobSearchSankey" viewBox="0 0 1000 380" role="img" aria-labelledby="jobSearchFlowTitle jobSearchFlowDesc"><desc id="jobSearchFlowDesc">Diagrama Sankey de oportunidades registradas, por postular, ingresadas al pipeline y sus estados actuales.</desc></svg></div>
-      <div class="sankey-foot"><span><i style="background:#fbbf24"></i>Por postular</span><span><i style="background:#4f8ef7"></i>En espera</span><span><i style="background:#22d3ee"></i>Entrevista</span><span><i style="background:#34d399"></i>Oferta</span><span><i style="background:#f87171"></i>Rechazada</span><span><i style="background:#8a97ad"></i>Retirada</span></div>
+      <div class="sankey-foot"><span><i style="background:#fbbf24"></i>Por postular</span><span><i style="background:#4f8ef7"></i>En espera</span><span><i style="background:#22d3ee"></i>Entrevista</span><span><i style="background:#34d399"></i>Oferta</span><span><i style="background:#f87171"></i>Rechazada</span><span><i style="background:#8a97ad"></i>Archivada / no perseguida</span></div>
     </section>
     <details class="jobs3-feed" id="jobs3AutomationFeed"><summary>Actualizaciones automáticas incorporadas al tracker</summary><div class="jobs3-feed-grid" id="jobs3AutomationFeedGrid"><div class="jobs3-feed-empty">El servicio local está disponible, pero todavía no hay actualizaciones automáticas.</div></div></details>
     <details class="home-analytics" id="homeAnalytics" ontoggle="if(this.open)requestAnimationFrame(()=&gt;renderCharts())">
@@ -871,7 +871,7 @@ html{scroll-padding-top:96px;}
     </div>
     <div class="fbar">
       <input type="text" class="f-search" id="fSearch" placeholder="🔍  Buscar empresa, cargo o palabras clave..." oninput="applyFilters()">
-      <select class="f-sel" id="fStatus" onchange="applyFilters()"><option value="">Todos los estados</option><option value="todo">Por postular</option><option value="applied">Postulada</option><option value="interview">Entrevista</option><option value="offer">Oferta</option><option value="rejected">Rechazada</option><option value="withdrawn">Retirada</option></select>
+      <select class="f-sel" id="fStatus" onchange="applyFilters()"><option value="">Todos los estados</option><option value="todo">Por postular</option><option value="applied">Postulada</option><option value="interview">Entrevista</option><option value="offer">Oferta</option><option value="rejected">Rechazada</option><option value="withdrawn">Archivada / no perseguida</option></select>
       <select class="f-sel" id="fPriority" onchange="applyFilters()"><option value="">Todas las prioridades</option><option value="HIGH">Alta</option><option value="MEDIUM">Media</option><option value="LOW">Baja</option></select>
       <select class="f-sel" id="fCompany" onchange="applyFilters()"><option value="">Todas las empresas</option><option value="Abbott">Abbott</option><option value="AstraZeneca">AstraZeneca</option><option value="Biogen">Biogen</option><option value="GSK">GSK</option><option value="ICON">ICON</option><option value="ICON Strategic Solutions">ICON Strategic Solutions</option><option value="ICON plc">ICON plc</option><option value="IQVIA">IQVIA</option><option value="JoVE">JoVE</option><option value="Merck">Merck</option><option value="Newscience">Newscience</option><option value="Novartis">Novartis</option><option value="Parexel">Parexel</option><option value="Randstad Chile">Randstad Chile</option><option value="Roche">Roche</option><option value="Siemens Healthineers">Siemens Healthineers</option><option value="Syneos Health">Syneos Health</option><option value="Thermo Fisher Scientific">Thermo Fisher Scientific</option><option value="Universidad de Santiago de Chile (USACH)">Universidad de Santiago de Chile (USACH)</option><option value="Xinerlink">Xinerlink</option><option value="bioMérieux">bioMérieux</option></select>
       <button class="sort-btn" id="sDeadline" onclick="doSort('deadline')">Cierre ↕</button>
@@ -2527,7 +2527,7 @@ Inicio estimado: 06 de julio de 2026</div></div></div></td></tr><tr class="co-hd
         <label class="ai-opt"><input type="checkbox" id="aiInstr" checked="" onchange="renderAI()">Include instruction header</label>
         <label class="ai-opt"><input type="checkbox" id="aiStatus" checked="" onchange="renderAI()">Include status and dates</label>
         <label class="ai-opt"><input type="checkbox" id="aiJobId" checked="" onchange="renderAI()">Include Job IDs</label>
-        <label class="ai-opt"><input type="checkbox" id="aiRejected" checked="" onchange="renderAI()">Include rejected and withdrawn</label>
+        <label class="ai-opt"><input type="checkbox" id="aiRejected" checked="" onchange="renderAI()">Include rejected and archived</label>
         <label class="ai-opt"><input type="checkbox" id="aiTrends" checked="" onchange="renderAI()">Include outcome trends by role family</label>
         <div class="fg"><label>Format</label>
           <select class="f-sel" id="aiFmt" onchange="renderAI()" style="width:100%;">
@@ -2578,7 +2578,7 @@ Inicio estimado: 06 de julio de 2026</div></div></div></td></tr><tr class="co-hd
   <div class="fgrid g2"><div class="fg"><label>Company *</label><input type="text" id="f_co" placeholder="e.g. Roche"></div><div class="fg"><label>Company Type</label><input type="text" id="f_cotype" placeholder="e.g. Diagnostics / Pharma"></div></div>
   <div class="fgrid g1"><div class="fg"><label>Role *</label><input type="text" id="f_role" placeholder="e.g. Oncology Medical Affairs Lead"></div></div>
   <div class="fgrid g3"><div class="fg"><label>Location</label><input type="text" id="f_loc" placeholder="Santiago, Chile"></div><div class="fg"><label>Category</label><input type="text" id="f_cat"></div><div class="fg"><label>Job ID</label><input type="text" id="f_jid"></div></div>
-  <div class="fgrid g4"><div class="fg"><label>Posted</label><input type="date" id="f_post"></div><div class="fg"><label>Deadline</label><input type="date" id="f_dl"></div><div class="fg"><label>Priority</label><select id="f_pri"><option value="HIGH">High</option><option value="MEDIUM">Medium</option><option value="LOW">Low</option></select></div><div class="fg"><label>Status</label><select id="f_st"><option value="todo">To Apply</option><option value="applied">Applied</option><option value="interview">Interview</option><option value="offer">Offer</option><option value="rejected">Rejected</option><option value="withdrawn">Withdrawn</option></select></div></div>
+  <div class="fgrid g4"><div class="fg"><label>Posted</label><input type="date" id="f_post"></div><div class="fg"><label>Deadline</label><input type="date" id="f_dl"></div><div class="fg"><label>Priority</label><select id="f_pri"><option value="HIGH">High</option><option value="MEDIUM">Medium</option><option value="LOW">Low</option></select></div><div class="fg"><label>Status</label><select id="f_st"><option value="todo">To Apply</option><option value="applied">Applied</option><option value="interview">Interview</option><option value="offer">Offer</option><option value="rejected">Rejected</option><option value="withdrawn">Archived / Not pursued</option></select></div></div>
   <div class="sec-ttl">Dates</div>
   <div class="fgrid g3"><div class="fg"><label>Applied</label><input type="date" id="f_adate"></div><div class="fg"><label>First Reply</label><input type="date" id="f_rdate"></div><div class="fg"><label>Rejected</label><input type="date" id="f_xdate"></div></div>
   <div class="sec-ttl">Interviews</div>
@@ -2604,7 +2604,7 @@ Inicio estimado: 06 de julio de 2026</div></div></div></td></tr><tr class="co-hd
 <div class="moverlay status-editor" id="statusEditorOverlay" onclick="if(event.target===this)closeStatusEditor()">
 <div class="modal"><div class="mhdr"><h2>Actualizar estado con evidencia</h2><button class="btn btn-ghost" onclick="closeStatusEditor()">✕</button></div>
 <div class="mbody"><p class="status-warning">El estado canónico solo se cambiará después de elegirlo explícitamente, indicar la fecha y registrar la evidencia. La acción se puede deshacer.</p>
-<div class="fgrid g2"><div class="fg"><label>Nuevo estado</label><select id="statusEditorValue"><option value="todo">Por postular</option><option value="applied">Postulada</option><option value="interview">Entrevista</option><option value="offer">Oferta</option><option value="rejected">Rechazada</option><option value="withdrawn">Retirada</option></select></div><div class="fg"><label>Fecha de la evidencia</label><input id="statusEditorDate" type="date"></div></div>
+<div class="fgrid g2"><div class="fg"><label>Nuevo estado</label><select id="statusEditorValue"><option value="todo">Por postular</option><option value="applied">Postulada</option><option value="interview">Entrevista</option><option value="offer">Oferta</option><option value="rejected">Rechazada</option><option value="withdrawn">Archivada / no perseguida</option></select></div><div class="fg"><label>Fecha de la evidencia</label><input id="statusEditorDate" type="date"></div></div>
 <div class="fg"><label>Evidencia o motivo</label><textarea class="status-evidence" id="statusEditorEvidence" placeholder="Ejemplo: confirmación del portal, correo del empleador o decisión personal"></textarea></div></div>
 <div class="mftr"><button class="btn btn-ghost" onclick="closeStatusEditor()">Cancelar</button><button class="btn btn-primary" onclick="saveExplicitStatus()">Guardar cambio</button></div></div></div>
 
@@ -16050,7 +16050,7 @@ function saveSourceReviewDraft(){
 }
 function clearSourceReviewDraft(){try{localStorage.removeItem(SOURCE_REVIEW_DRAFT_KEY);}catch{}}
 const STATUSES=['todo','applied','interview','offer','rejected','withdrawn'];
-const SLABELS={todo:'Por postular',applied:'Postulada',interview:'Entrevista',offer:'Oferta',rejected:'Rechazada',withdrawn:'Retirada'};
+const SLABELS={todo:'Por postular',applied:'Postulada',interview:'Entrevista',offer:'Oferta',rejected:'Rechazada',withdrawn:'Archivada'};
 const SCLASS={todo:'s-todo',applied:'s-applied',interview:'s-interview',offer:'s-offer',rejected:'s-rejected',withdrawn:'s-withdrawn'};
 const SCOLORS={todo:'#fbbf24',applied:'#4f8ef7',interview:'#22d3ee',offer:'#34d399',rejected:'#f87171',withdrawn:'#8a97ad'};
 const IVTYPES=['Llamada inicial','Video asíncrono','Videollamada','Panel','Técnica o caso','Presencial','Recursos Humanos u oferta','Otro'];
@@ -16512,7 +16512,7 @@ function marketStatusMeta(s){
   })[s]||[s||'Sin estado','src-unverified'];
 }
 function appStatusMeta(s){
-  return ({todo:['Por postular','src-unverified'],applied:['Aplicada','src-linkedin'],interview:['Entrevista','mail-confirmed'],offer:['Oferta','mail-confirmed'],rejected:['Rechazada','src-removed'],withdrawn:['Retirada','src-removed']})[s]||[s||'Sin estado','src-unverified'];
+  return ({todo:['Por postular','src-unverified'],applied:['Aplicada','src-linkedin'],interview:['Entrevista','mail-confirmed'],offer:['Oferta','mail-confirmed'],rejected:['Rechazada','src-removed'],withdrawn:['Archivada','src-removed']})[s]||[s||'Sin estado','src-unverified'];
 }
 function setHistoryMode(mode){
   HISTORY_MODE=mode==='applications'?'applications':'market';
@@ -16526,7 +16526,7 @@ function configureHistoryStatus(){
   const el=document.getElementById('historyStatus');if(!el)return;
   const opts=HISTORY_MODE==='market'
     ?[['','Todos los estados'],['open','Abiertas'],['removed','Retiradas'],['historical-unverified','Históricas no verificadas'],['linkedin-unverified','LinkedIn no verificadas'],['linkedin-closed','LinkedIn cerradas']]
-    :[['','Todos los estados'],['applied','Aplicadas'],['interview','Entrevistas'],['offer','Ofertas'],['rejected','Rechazadas'],['withdrawn','Retiradas'],['todo','Por postular']];
+    :[['','Todos los estados'],['applied','Aplicadas'],['interview','Entrevistas'],['offer','Ofertas'],['rejected','Rechazadas'],['withdrawn','Archivadas'],['todo','Por postular']];
   el.innerHTML=opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
 }
 function renderHistory(){
@@ -16843,7 +16843,7 @@ function renderCalendar(){
 }
 
 // METRICS
-function calcM(){const js=S.jobs,n=js.length;const cnt=s=>js.filter(j=>effectiveStatus(j)===s).length;const todo=cnt('todo'),applied=cnt('applied'),interview=cnt('interview'),offer=cnt('offer'),rejected=cnt('rejected'),withdrawn=cnt('withdrawn');const sent=n-todo;const everInterviewed=js.filter(ivReached).length;const rr=sent>0?Math.round((everInterviewed/sent)*100):0;const xr=sent>0?Math.round((rejected/sent)*100):0;const ic=everInterviewed>0?Math.round((offer/everInterviewed)*100):0;const scores=js.filter(j=>j.fitScore).map(j=>+j.fitScore);const avgF=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'—';const cos=new Set(js.map(j=>j.company)).size;const now=new Date();const ws=new Date(now);ws.setDate(now.getDate()-now.getDay());ws.setHours(0,0,0,0);const ms=new Date(now.getFullYear(),now.getMonth(),1);const fa=new Date(now);fa.setDate(now.getDate()-28);const localDate=j=>new Date(j.appliedDate+'T00:00:00');const thisWk=js.filter(j=>j.appliedDate&&localDate(j)>=ws).length;const thisMo=js.filter(j=>j.appliedDate&&localDate(j)>=ms).length;const last4=js.filter(j=>j.appliedDate&&localDate(j)>=fa).length;const vel=(last4/4).toFixed(1);const upcoming=js.filter(j=>nextIv(j)).length;const totalIv=js.reduce((a,j)=>a+ivAll(j),0);return{n,todo,applied,interview,offer,rejected,withdrawn,sent,everInterviewed,rr,xr,ic,avgF,cos,thisWk,thisMo,vel,upcoming,totalIv};}
+function calcM(){const js=S.jobs,n=js.length;const cnt=s=>js.filter(j=>effectiveStatus(j)===s).length;const todo=cnt('todo'),applied=cnt('applied'),interview=cnt('interview'),offer=cnt('offer'),rejected=cnt('rejected'),withdrawn=cnt('withdrawn');const sent=applied+interview+offer+rejected;const everInterviewed=js.filter(j=>j.status!=='withdrawn'&&ivReached(j)).length;const rr=sent>0?Math.round((everInterviewed/sent)*100):0;const xr=sent>0?Math.round((rejected/sent)*100):0;const ic=everInterviewed>0?Math.round((offer/everInterviewed)*100):0;const scores=js.filter(j=>j.fitScore).map(j=>+j.fitScore);const avgF=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):'—';const cos=new Set(js.map(j=>j.company)).size;const now=new Date();const ws=new Date(now);ws.setDate(now.getDate()-now.getDay());ws.setHours(0,0,0,0);const ms=new Date(now.getFullYear(),now.getMonth(),1);const fa=new Date(now);fa.setDate(now.getDate()-28);const localDate=j=>new Date(j.appliedDate+'T00:00:00');const thisWk=js.filter(j=>j.appliedDate&&j.status!=='withdrawn'&&localDate(j)>=ws).length;const thisMo=js.filter(j=>j.appliedDate&&j.status!=='withdrawn'&&localDate(j)>=ms).length;const last4=js.filter(j=>j.appliedDate&&j.status!=='withdrawn'&&localDate(j)>=fa).length;const vel=(last4/4).toFixed(1);const upcoming=js.filter(j=>nextIv(j)).length;const totalIv=js.filter(j=>j.status!=='withdrawn').reduce((a,j)=>a+ivAll(j),0);return{n,todo,applied,interview,offer,rejected,withdrawn,sent,everInterviewed,rr,xr,ic,avgF,cos,thisWk,thisMo,vel,upcoming,totalIv};}
 
 // ROLE FAMILIES (title-based, not company-based)
 const FAMILIES=[
@@ -16997,20 +16997,25 @@ function renderJobSearchSankey(){
   if(!svg)return;
   const counts={todo:0,applied:0,interview:0,offer:0,rejected:0,withdrawn:0};
   S.jobs.forEach(j=>{const s=effectiveStatus(j);if(Object.prototype.hasOwnProperty.call(counts,s))counts[s]++;});
-  const total=S.jobs.length,pipeline=Math.max(0,total-counts.todo),scale=total?280/total:0,minNode=counts=>counts?Math.max(6,counts*scale):0;
+  const total=S.jobs.length,pipeline=counts.applied+counts.interview+counts.offer+counts.rejected,scale=total?280/total:0,minNode=count=>count?Math.max(6,count*scale):0;
   if(totalEl)totalEl.innerHTML=`<b>${total}</b> registradas`;
   if(!total){svg.innerHTML='<text x="500" y="190" text-anchor="middle" class="sankey-note">No hay oportunidades registradas.</text>';return;}
   const left={x:40,y:50,w:24,h:280,label:'Registradas',value:total};
-  const todoH=minNode(counts.todo),pipelineH=minNode(pipeline),midGap=counts.todo&&pipeline?28:0;
-  const midTotal=todoH+pipelineH+midGap,midStart=(380-midTotal)/2;
-  const todo={x:340,y:midStart,w:24,h:todoH,label:'Por postular',value:counts.todo,color:'#fbbf24'};
-  const entered={x:340,y:midStart+todoH+midGap,w:24,h:pipelineH,label:'En pipeline',value:pipeline,color:'#bf5af2'};
+  const branches=[
+    {key:'todo',label:'Por postular',value:counts.todo,color:'#fbbf24'},
+    {key:'pipeline',label:'Postuladas',value:pipeline,color:'#bf5af2'},
+    {key:'withdrawn',label:'Archivadas',value:counts.withdrawn,color:'#8a97ad'}
+  ].filter(x=>x.value>0);
+  const branchGap=20,branchHeights=branches.map(x=>minNode(x.value));
+  const branchTotal=branchHeights.reduce((a,b)=>a+b,0)+Math.max(0,branches.length-1)*branchGap;
+  let branchY=(380-branchTotal)/2;
+  branches.forEach((x,i)=>{x.x=340;x.y=branchY;x.w=24;x.h=branchHeights[i];branchY+=x.h+branchGap;});
+  const entered=branches.find(x=>x.key==='pipeline');
   const outcomes=[
     {key:'applied',label:'En espera',value:counts.applied,color:'#4f8ef7'},
     {key:'interview',label:'Entrevista',value:counts.interview,color:'#22d3ee'},
     {key:'offer',label:'Oferta',value:counts.offer,color:'#34d399'},
-    {key:'rejected',label:'Rechazada',value:counts.rejected,color:'#f87171'},
-    {key:'withdrawn',label:'Retirada',value:counts.withdrawn,color:'#8a97ad'}
+    {key:'rejected',label:'Rechazada',value:counts.rejected,color:'#f87171'}
   ].filter(x=>x.value>0);
   const outGap=14,outHeights=outcomes.map(x=>minNode(x.value));
   const outTotal=outHeights.reduce((a,b)=>a+b,0)+Math.max(0,outcomes.length-1)*outGap;
@@ -17019,15 +17024,13 @@ function renderJobSearchSankey(){
   const path=(x1,y1,x2,y2,width,color)=>`<path class="sankey-flow" d="M ${x1} ${y1} C ${x1+110} ${y1}, ${x2-110} ${y2}, ${x2} ${y2}" stroke="${color}" stroke-width="${Math.max(2,width)}"><title>${Math.round(width/scale)||0} oportunidades</title></path>`;
   let html='';
   let leftCursor=left.y;
-  if(counts.todo){const w=counts.todo*scale;html+=path(left.x+left.w,leftCursor+w/2,todo.x,todo.y+todo.h/2,w,todo.color);leftCursor+=w;}
-  if(pipeline){const w=pipeline*scale;html+=path(left.x+left.w,leftCursor+w/2,entered.x,entered.y+entered.h/2,w,entered.color);}
-  let enteredCursor=entered.y;
-  outcomes.forEach(x=>{const w=x.value*scale;html+=path(entered.x+entered.w,enteredCursor+w/2,x.x,x.y+x.h/2,w,x.color);enteredCursor+=w;});
+  branches.forEach(x=>{const w=x.value*scale;html+=path(left.x+left.w,leftCursor+w/2,x.x,x.y+x.h/2,w,x.color);leftCursor+=w;});
+  if(entered){let enteredCursor=entered.y;outcomes.forEach(x=>{const w=x.value*scale;html+=path(entered.x+entered.w,enteredCursor+w/2,x.x,x.y+x.h/2,w,x.color);enteredCursor+=w;});}
   const node=n=>`<rect class="sankey-node" x="${n.x}" y="${n.y}" width="${n.w}" height="${Math.max(2,n.h)}" fill="${n.color||'#bf5af2'}"></rect>`;
   const label=(n,side='right')=>{const x=side==='left'?n.x-14:n.x+n.w+14,anchor=side==='left'?'end':'start',y=n.y+n.h/2;return`<text x="${x}" y="${y-3}" text-anchor="${anchor}" class="sankey-value">${n.value}</text><text x="${x}" y="${y+17}" text-anchor="${anchor}" class="sankey-label">${n.label}</text>`;};
-  html+=node(left)+node(todo)+node(entered)+outcomes.map(node).join('');
-  html+=label(left,'right')+label(todo,'right')+label(entered,'right')+outcomes.map(n=>label(n,'right')).join('');
-  html+='<text x="40" y="28" class="sankey-note">UNIVERSO</text><text x="340" y="28" class="sankey-note">ENTRADA</text><text x="760" y="28" class="sankey-note">ESTADO ACTUAL</text>';
+  html+=node(left)+branches.map(node).join('')+outcomes.map(node).join('');
+  html+=label(left,'right')+branches.map(n=>label(n,'right')).join('')+outcomes.map(n=>label(n,'right')).join('');
+  html+='<text x="40" y="28" class="sankey-note">UNIVERSO</text><text x="340" y="28" class="sankey-note">CLASIFICACIÓN</text><text x="760" y="28" class="sankey-note">ESTADO DE POSTULACIÓN</text>';
   svg.innerHTML=html;
 }
 
@@ -17046,7 +17049,7 @@ function renderInsights(){
 
 function renderMetrics(){
   const m=calcM();
-  const headerCount=document.getElementById('headerAppCount');if(headerCount)headerCount.textContent=`${m.n} postulaci${m.n===1?'ón':'ones'} canónica${m.n===1?'':'s'}`;
+  const headerCount=document.getElementById('headerAppCount');if(headerCount)headerCount.textContent=`${m.n} oportunidad${m.n===1?'':'es'} registrada${m.n===1?'':'s'}`;
   const todoNavCntEl=document.getElementById('todoNavCnt');if(todoNavCntEl)todoNavCntEl.textContent=m.todo;
   const cards=[
     {lbl:'Applied',val:m.sent,sub:`${m.n} tracked · ${m.todo} to apply`,acc:'#4f8ef7'},
@@ -17093,7 +17096,7 @@ function renderCFunnel(){
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>i[0].label}}},scales:{x:{stacked:false,ticks:{color:'#7d8ea6',font:{size:10}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#7d8ea6',font:{size:9},stepSize:1},grid:{color:'rgba(255,255,255,.03)'},beginAtZero:true}}}});
   document.getElementById('cFLeg').innerHTML=`<span><span class="cd" style="background:rgba(34,211,238,.75)"></span>Still in process</span><span><span class="cd" style="background:rgba(52,211,153,.8)"></span>Offer</span><span><span class="cd" style="background:rgba(248,113,113,.8)"></span>Rejected</span>`;
 }
-function renderCStatus(){const js=S.jobs;const keys=['todo','applied','interview','offer','rejected','withdrawn'];const labels=['To Apply','Applied','Interview','Offer','Rejected','Withdrawn'];const colors=keys.map(k=>SCOLORS[k]);const data=keys.map(k=>js.filter(j=>effectiveStatus(j)===k).length);const ctx=document.getElementById('cStatus').getContext('2d');if(cStatus)cStatus.destroy();cStatus=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});document.getElementById('cSLeg').innerHTML=labels.map((l,i)=>data[i]>0?`<span><span class="cd" style="background:${colors[i]}"></span>${l} ${data[i]}</span>`:'').join('');}
+function renderCStatus(){const js=S.jobs;const keys=['todo','applied','interview','offer','rejected','withdrawn'];const labels=['To Apply','Applied','Interview','Offer','Rejected','Archived'];const colors=keys.map(k=>SCOLORS[k]);const data=keys.map(k=>js.filter(j=>effectiveStatus(j)===k).length);const ctx=document.getElementById('cStatus').getContext('2d');if(cStatus)cStatus.destroy();cStatus=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});document.getElementById('cSLeg').innerHTML=labels.map((l,i)=>data[i]>0?`<span><span class="cd" style="background:${colors[i]}"></span>${l} ${data[i]}</span>`:'').join('');}
 function renderCTime(){const js=S.jobs,now=new Date(),weeks=[];for(let i=9;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i*7);const ws=new Date(d);ws.setDate(d.getDate()-d.getDay());ws.setHours(0,0,0,0);const we=new Date(ws);we.setDate(ws.getDate()+7);const lbl=ws.toLocaleDateString('en-US',{month:'short',day:'numeric'});const cnt=js.filter(j=>{const dt=j.appliedDate||j.createdAt;if(!dt)return false;const dd=new Date(dt);return dd>=ws&&dd<we;}).length;weeks.push({lbl,cnt});}const ctx=document.getElementById('cTime').getContext('2d');if(cTime)cTime.destroy();cTime=new Chart(ctx,{type:'bar',data:{labels:weeks.map(w=>w.lbl),datasets:[{data:weeks.map(w=>w.cnt),backgroundColor:'rgba(79,142,247,.7)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7d8ea6',font:{size:9},maxRotation:45,autoSkip:false},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#7d8ea6',font:{size:9},stepSize:1},grid:{color:'rgba(255,255,255,.03)'},beginAtZero:true}}}});}
 function renderCFit(){const js=S.jobs.filter(j=>j.fitScore);const bk=[{l:'1-4',n:js.filter(j=>j.fitScore<4).length,c:'#f87171'},{l:'4-6',n:js.filter(j=>j.fitScore>=4&&j.fitScore<6).length,c:'#fb923c'},{l:'6-7',n:js.filter(j=>j.fitScore>=6&&j.fitScore<7).length,c:'#fbbf24'},{l:'7-8',n:js.filter(j=>j.fitScore>=7&&j.fitScore<8).length,c:'#34d399'},{l:'8-9',n:js.filter(j=>j.fitScore>=8&&j.fitScore<9).length,c:'#4f8ef7'},{l:'9-10',n:js.filter(j=>j.fitScore>=9).length,c:'#9f7aea'}];const ctx=document.getElementById('cFit').getContext('2d');if(cFit)cFit.destroy();cFit=new Chart(ctx,{type:'bar',data:{labels:bk.map(b=>b.l),datasets:[{data:bk.map(b=>b.n),backgroundColor:bk.map(b=>b.c+'cc'),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7d8ea6',font:{size:9}},grid:{color:'rgba(255,255,255,.03)'}},y:{ticks:{color:'#7d8ea6',font:{size:9},stepSize:1},grid:{color:'rgba(255,255,255,.03)'},beginAtZero:true}}}});}
 
@@ -17215,7 +17218,7 @@ function undoLastAction(){
 }
 function openStatusEditor(id,preset=''){const j=S.jobs.find(x=>x.id===id);if(!j)return;STATUS_EDITOR_ID=id;document.getElementById('statusEditorValue').value=preset||j.status;document.getElementById('statusEditorDate').value=today();document.getElementById('statusEditorEvidence').value='';document.getElementById('statusEditorOverlay').classList.add('open');}
 function closeStatusEditor(){document.getElementById('statusEditorOverlay').classList.remove('open');STATUS_EDITOR_ID='';}
-function saveExplicitStatus(){const j=S.jobs.find(x=>x.id===STATUS_EDITOR_ID);if(!j)return;const next=document.getElementById('statusEditorValue').value,date=document.getElementById('statusEditorDate').value,evidence=document.getElementById('statusEditorEvidence').value.trim();if(!STATUSES.includes(next)||!date||!evidence){toast('Elige estado, fecha y evidencia.');return;}if(next==='todo'&&j.status!=='todo'){toast('No se puede volver a Por postular sin borrar el historial. Usa Deshacer o Retirada.');return;}if(next==='interview'&&!(j.interviews||[]).length){toast('Registra la entrevista en el formulario antes de cambiar el estado.');return;}if(next===j.status){toast('Elige un estado distinto.');return;}rememberCanonicalChange(j,`Estado ${j.status} a ${next}`);j.status=next;j.statusEvidence=Array.isArray(j.statusEvidence)?j.statusEvidence:[];j.statusEvidence.push({status:next,date,evidence:boundedText(evidence,1200),recordedAt:new Date().toISOString()});if(next==='applied'&&!j.appliedDate)j.appliedDate=date;if(next==='rejected')j.rejectedDate=date;if(['interview','offer'].includes(next)&&!j.replyDate)j.replyDate=date;save();closeStatusEditor();renderAll();toast(`Estado actualizado a ${SLABELS[next]}.`);}
+function saveExplicitStatus(){const j=S.jobs.find(x=>x.id===STATUS_EDITOR_ID);if(!j)return;const next=document.getElementById('statusEditorValue').value,date=document.getElementById('statusEditorDate').value,evidence=document.getElementById('statusEditorEvidence').value.trim();if(!STATUSES.includes(next)||!date||!evidence){toast('Elige estado, fecha y evidencia.');return;}if(next==='todo'&&j.status!=='todo'){toast('No se puede volver a Por postular sin borrar el historial. Usa Deshacer o Archivada.');return;}if(next==='interview'&&!(j.interviews||[]).length){toast('Registra la entrevista en el formulario antes de cambiar el estado.');return;}if(next===j.status){toast('Elige un estado distinto.');return;}rememberCanonicalChange(j,`Estado ${j.status} a ${next}`);j.status=next;j.statusEvidence=Array.isArray(j.statusEvidence)?j.statusEvidence:[];j.statusEvidence.push({status:next,date,evidence:boundedText(evidence,1200),recordedAt:new Date().toISOString()});if(next==='applied'&&!j.appliedDate)j.appliedDate=date;if(next==='rejected')j.rejectedDate=date;if(['interview','offer'].includes(next)&&!j.replyDate)j.replyDate=date;save();closeStatusEditor();renderAll();toast(`Estado actualizado a ${SLABELS[next]}.`);}
 function cycleStatus(id){openStatusEditor(id);}
 function quickApply(id){openStatusEditor(id,'applied');}
 function quickInterview(id){const j=S.jobs.find(x=>x.id===id);if(!j)return;openModal(id);addIvRow({round:(j.interviews||[]).length+1,date:'',type:'',notes:''});toast('Completa fecha, tipo y evidencia antes de guardar la entrevista.');}
@@ -17358,7 +17361,7 @@ function aiApplierText(){
   const todos=S.jobs.filter(j=>j.status==='todo');
   if(todos.length){out+=`\nTO APPLY NEXT (${todos.length}):\n`;todos.forEach(j=>out+=line(j));}
   if(withRej){
-    const rejs=S.jobs.filter(j=>j.status==='rejected'||j.status==='withdrawn').sort((a,b)=>(b.rejectedDate||'')<(a.rejectedDate||'')?-1:1);
+    const rejs=S.jobs.filter(j=>j.status==='rejected').sort((a,b)=>(b.rejectedDate||'')<(a.rejectedDate||'')?-1:1);
     if(rejs.length){
       out+=`\nREJECTION HISTORY (${rejs.length}), with how far each got:\n`;
       rejs.forEach(j=>{
@@ -17372,6 +17375,8 @@ function aiApplierText(){
         if(withGaps&&j.gaps&&j.gaps.length)out+=`    · known gaps: ${j.gaps.slice(0,4).join('; ')}\n`;
       });
     }
+    const archived=S.jobs.filter(j=>j.status==='withdrawn');
+    if(archived.length){out+=`\nARCHIVED / NOT PURSUED (${archived.length}), not application outcomes:\n`;archived.forEach(j=>{out+=`- ${j.company} | ${j.role}${j.appliedDate?' | duplicate or retired record; canonical process tracked elsewhere':' | never submitted'}\n`;});}
   }
   out+=`\nWHEN HELPING ME: cross-reference new postings against the family trends above, reuse angles from applications that reached interviews, and address the recurring gaps of the families where I keep getting rejected without interviews.\n`;
   return out;
