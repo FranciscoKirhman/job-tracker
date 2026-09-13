@@ -56,7 +56,25 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .ch-leg{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
 .ch-leg span{display:flex;align-items:center;gap:3px;font-size:.6rem;color:var(--text3);}
 .ch-leg .cd{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
+.sankey-card{margin:14px 0;background:linear-gradient(145deg,rgba(28,28,30,.98),rgba(20,25,36,.98));border:1px solid var(--border);border-radius:16px;padding:18px 20px;overflow:hidden;}
+.sankey-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:12px;}
+.sankey-head h3{font-size:.92rem;letter-spacing:-.01em;margin-bottom:4px;}
+.sankey-head p{font-size:.72rem;color:var(--text3);line-height:1.45;max-width:720px;}
+.sankey-total{font-size:.66rem;color:var(--text3);white-space:nowrap;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;padding:7px 10px;}
+.sankey-total b{color:var(--text);font-size:.8rem;margin-right:3px;}
+.sankey-wrap{width:100%;overflow-x:auto;overscroll-behavior-inline:contain;}
+.sankey-svg{display:block;width:100%;min-width:760px;height:auto;min-height:300px;}
+.sankey-flow{fill:none;stroke-opacity:.32;transition:stroke-opacity .16s;}
+.sankey-flow:hover{stroke-opacity:.62;}
+.sankey-node{rx:7;ry:7;}
+.sankey-label{fill:var(--text2);font-size:14px;font-weight:650;}
+.sankey-value{fill:var(--text);font-size:20px;font-weight:800;}
+.sankey-note{fill:var(--text3);font-size:12px;}
+.sankey-foot{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;color:var(--text3);font-size:.66rem;}
+.sankey-foot span{display:flex;align-items:center;gap:5px;}
+.sankey-foot i{width:8px;height:8px;border-radius:2px;display:inline-block;}
 @media(max-width:900px){.charts{grid-template-columns:1fr;}.stats-row{grid-template-columns:1fr;}}
+@media(max-width:700px){.sankey-card{padding:16px 14px}.sankey-head{display:block}.sankey-total{display:inline-block;margin-top:10px}.sankey-svg{min-width:700px}.sankey-wrap{padding-bottom:6px}}
 /* FILTER */
 .fbar{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
 .f-search{flex:1;min-width:170px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:inherit;font-size:.78rem;}
@@ -792,6 +810,11 @@ html{scroll-padding-top:96px;}
         <button class="home-go" style="margin-top:14px" onclick="goPage('apps')">Ver postulaciones</button>
       </aside>
     </div>
+    <section class="sankey-card" aria-labelledby="jobSearchFlowTitle">
+      <div class="sankey-head"><div><h3 id="jobSearchFlowTitle">Flujo de la búsqueda laboral</h3><p>Cómo se distribuyen hoy todas las oportunidades registradas. Los estados reflejan evidencia del tracker; el silencio permanece en espera.</p></div><div class="sankey-total" id="sankeyTotal"><b>0</b> registradas</div></div>
+      <div class="sankey-wrap"><svg class="sankey-svg" id="jobSearchSankey" viewBox="0 0 1000 380" role="img" aria-labelledby="jobSearchFlowTitle jobSearchFlowDesc"><desc id="jobSearchFlowDesc">Diagrama Sankey de oportunidades registradas, por postular, ingresadas al pipeline y sus estados actuales.</desc></svg></div>
+      <div class="sankey-foot"><span><i style="background:#fbbf24"></i>Por postular</span><span><i style="background:#4f8ef7"></i>En espera</span><span><i style="background:#22d3ee"></i>Entrevista</span><span><i style="background:#34d399"></i>Oferta</span><span><i style="background:#f87171"></i>Rechazada</span><span><i style="background:#8a97ad"></i>Retirada</span></div>
+    </section>
     <details class="jobs3-feed" id="jobs3AutomationFeed"><summary>Actualizaciones automáticas incorporadas al tracker</summary><div class="jobs3-feed-grid" id="jobs3AutomationFeedGrid"><div class="jobs3-feed-empty">El servicio local está disponible, pero todavía no hay actualizaciones automáticas.</div></div></details>
     <details class="home-analytics" id="homeAnalytics" ontoggle="if(this.open)requestAnimationFrame(()=&gt;renderCharts())">
       <summary>Análisis detallado del pipeline</summary>
@@ -16969,6 +16992,45 @@ function renderHome(){
     else{navMoreLiveText.innerHTML=`<b>${active}</b> procesos activos · sin eventos próximos`;}
   }
 }
+function renderJobSearchSankey(){
+  const svg=document.getElementById('jobSearchSankey'),totalEl=document.getElementById('sankeyTotal');
+  if(!svg)return;
+  const counts={todo:0,applied:0,interview:0,offer:0,rejected:0,withdrawn:0};
+  S.jobs.forEach(j=>{const s=effectiveStatus(j);if(Object.prototype.hasOwnProperty.call(counts,s))counts[s]++;});
+  const total=S.jobs.length,pipeline=Math.max(0,total-counts.todo),scale=total?280/total:0,minNode=counts=>counts?Math.max(6,counts*scale):0;
+  if(totalEl)totalEl.innerHTML=`<b>${total}</b> registradas`;
+  if(!total){svg.innerHTML='<text x="500" y="190" text-anchor="middle" class="sankey-note">No hay oportunidades registradas.</text>';return;}
+  const left={x:40,y:50,w:24,h:280,label:'Registradas',value:total};
+  const todoH=minNode(counts.todo),pipelineH=minNode(pipeline),midGap=counts.todo&&pipeline?28:0;
+  const midTotal=todoH+pipelineH+midGap,midStart=(380-midTotal)/2;
+  const todo={x:340,y:midStart,w:24,h:todoH,label:'Por postular',value:counts.todo,color:'#fbbf24'};
+  const entered={x:340,y:midStart+todoH+midGap,w:24,h:pipelineH,label:'En pipeline',value:pipeline,color:'#bf5af2'};
+  const outcomes=[
+    {key:'applied',label:'En espera',value:counts.applied,color:'#4f8ef7'},
+    {key:'interview',label:'Entrevista',value:counts.interview,color:'#22d3ee'},
+    {key:'offer',label:'Oferta',value:counts.offer,color:'#34d399'},
+    {key:'rejected',label:'Rechazada',value:counts.rejected,color:'#f87171'},
+    {key:'withdrawn',label:'Retirada',value:counts.withdrawn,color:'#8a97ad'}
+  ].filter(x=>x.value>0);
+  const outGap=14,outHeights=outcomes.map(x=>minNode(x.value));
+  const outTotal=outHeights.reduce((a,b)=>a+b,0)+Math.max(0,outcomes.length-1)*outGap;
+  let outY=(380-outTotal)/2;
+  outcomes.forEach((x,i)=>{x.x=760;x.y=outY;x.w=24;x.h=outHeights[i];outY+=x.h+outGap;});
+  const path=(x1,y1,x2,y2,width,color)=>`<path class="sankey-flow" d="M ${x1} ${y1} C ${x1+110} ${y1}, ${x2-110} ${y2}, ${x2} ${y2}" stroke="${color}" stroke-width="${Math.max(2,width)}"><title>${Math.round(width/scale)||0} oportunidades</title></path>`;
+  let html='';
+  let leftCursor=left.y;
+  if(counts.todo){const w=counts.todo*scale;html+=path(left.x+left.w,leftCursor+w/2,todo.x,todo.y+todo.h/2,w,todo.color);leftCursor+=w;}
+  if(pipeline){const w=pipeline*scale;html+=path(left.x+left.w,leftCursor+w/2,entered.x,entered.y+entered.h/2,w,entered.color);}
+  let enteredCursor=entered.y;
+  outcomes.forEach(x=>{const w=x.value*scale;html+=path(entered.x+entered.w,enteredCursor+w/2,x.x,x.y+x.h/2,w,x.color);enteredCursor+=w;});
+  const node=n=>`<rect class="sankey-node" x="${n.x}" y="${n.y}" width="${n.w}" height="${Math.max(2,n.h)}" fill="${n.color||'#bf5af2'}"></rect>`;
+  const label=(n,side='right')=>{const x=side==='left'?n.x-14:n.x+n.w+14,anchor=side==='left'?'end':'start',y=n.y+n.h/2;return`<text x="${x}" y="${y-3}" text-anchor="${anchor}" class="sankey-value">${n.value}</text><text x="${x}" y="${y+17}" text-anchor="${anchor}" class="sankey-label">${n.label}</text>`;};
+  html+=node(left)+node(todo)+node(entered)+outcomes.map(node).join('');
+  html+=label(left,'right')+label(todo,'right')+label(entered,'right')+outcomes.map(n=>label(n,'right')).join('');
+  html+='<text x="40" y="28" class="sankey-note">UNIVERSO</text><text x="340" y="28" class="sankey-note">ENTRADA</text><text x="760" y="28" class="sankey-note">ESTADO ACTUAL</text>';
+  svg.innerHTML=html;
+}
+
 function renderInsights(){
   const T=calcTiming();
   const fmtD=v=>v===null?'—':v+'d';
@@ -17461,7 +17523,7 @@ function renderSyncBadge(){
   el.className=cls;
   textEl.textContent='Sync local: '+label;
 }
-function renderAll(){renderMetrics();renderHome();renderTable();renderHistory();renderCompanyRadar();renderNewJobs();renderInterest();renderCalendar();renderSources();renderMail();renderAI();renderJobs3AutomationFeed();}
+function renderAll(){renderMetrics();renderHome();renderJobSearchSankey();renderTable();renderHistory();renderCompanyRadar();renderNewJobs();renderInterest();renderCalendar();renderSources();renderMail();renderAI();renderJobs3AutomationFeed();}
 loadData();loadDiscarded();S.collapsed=new Set(S.jobs.map(j=>j.company));loadViewState();syncFilterInputsFromState();configureHistoryStatus();renderAll();updateUndoButton();initPage();initJobs3Chat();renderSyncBadge();setInterval(renderSyncBadge,60000);
 window.addEventListener('beforeunload',()=>save());
 document.addEventListener('keydown',e=>{
