@@ -17066,7 +17066,7 @@ function renderJobSearchSankey(){
   const node=n=>`<rect class="sankey-node" x="${n.x}" y="${n.y}" width="${n.w}" height="${Math.max(2,n.h)}" fill="${n.color||'#bf5af2'}"></rect>`;
   const label=(n,side='right')=>{const x=side==='left'?n.x-14:n.x+n.w+14,anchor=side==='left'?'end':'start',y=n.y+n.h/2;return`<text x="${x}" y="${y-3}" text-anchor="${anchor}" class="sankey-value">${n.value}</text><text x="${x}" y="${y+17}" text-anchor="${anchor}" class="sankey-label">${n.label}</text>`;};
   html+=node(left)+branches.map(node).join('')+[waiting,rejected,first,activeFirst,second,activeSecond].filter(n=>n.value>0).map(node).join('');
-  html+=label(left,'right')+branches.map(n=>label(n,'right')).join('')+[waiting,rejected,first,activeFirst,second,activeSecond].filter(n=>n.value>0).map(n=>label(n,'right')).join('');
+  html+=label(left,'right')+branches.map(n=>label(n,'right')).join('')+label(waiting,'right')+label(rejected,'right')+label(first,'right')+(activeAfterFirst?label(activeFirst,'left'):'')+(secondReached?label(second,'right'):'')+(activeAfterSecond?label(activeSecond,'left'):'');
   html+=`<text x="1010" y="284" class="sankey-value">${thirdReached}</text><text x="1036" y="284" class="sankey-label">3ra entrevista</text>`;
   html+='<text x="40" y="34" class="sankey-note">UNIVERSO</text><text x="245" y="34" class="sankey-note">CLASIFICACIÓN</text><text x="480" y="34" class="sankey-note">PRIMERA ENTREVISTA</text><text x="745" y="34" class="sankey-note">SEGUNDA ENTREVISTA</text><text x="1010" y="34" class="sankey-note">TERCERA ENTREVISTA</text>';
   svg.innerHTML=html;
