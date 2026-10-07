@@ -1,6 +1,16 @@
 {
   "initialized": true,
-  "pending": {},
+  "pending": {
+    "rss:community.openai.com-topic-1403525": {
+      "excerpt": "It looks like the OpenAI team decided that the flood of DevDay announcements was not enough. Starting today, there will be one clear improvement each day for most of all Codex or Work users. On days without one, everyone gets a full reset instead. Because why not? We’ll keep this topic updated each day. Click on any announcement to jump straight to the relevant post. Day 1: GPT -6-Astra and GPT-6.1-Sol performance upgrade Day 2.1: Auto-Review is now free Day 2.2: Simplified API rate-limit qualification Day 2.3: Meetings plugin for notetaking Day 2.4: Decisions API is in public beta Day 2.5: Rate Limits reset for everyone x.com Tibo @thsottiaux Over the next 28 days, each day we’ll either ship one thing that is a clear improvement and relevant for most codex/work users or ship a full reset. Let the improvements begin. x.com/thsottiaux/sta… Tibo @thsottiaux All right, we’re locking in. Onl",
+      "key": "rss:community.openai.com-topic-1403525",
+      "official_post": "https://x.com/thsottiaux/status/2107573405553938664",
+      "published_at": "2026-10-05T17:33:29+00:00",
+      "source": "OpenAI Developer Community announcements RSS",
+      "title": "Free Auto Review: Day 2 of 28 days of Quality of Life improvements or a full Reset",
+      "url": "https://community.openai.com/t/free-auto-review-day-2-of-28-days-of-quality-of-life-improvements-or-a-full-reset/1403525"
+    }
+  },
   "seen": {
     "community-post:1850335": {
       "excerpt": "Just saw that following a brief Codex outage the rate limits have been reset: https://x.com/thsottiaux/status/1986166501435711936 x.com https://x.com/thsottiaux/status/1986166501435711936 Tibo https://x.com/thsottiaux/status/1986166501435711936 @thsottiaux Codex outage resolved. We suffered a min...",
