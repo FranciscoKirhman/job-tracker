@@ -162,6 +162,11 @@ def latest_activity(record: dict[str, Any], today: str) -> str:
     interviews = sorted(
         interview_entries(record), key=lambda item: str(item.get("date") or "")
     )
+    follow_up = str(record.get("lastFollowUpDate") or "")
+    prior_dates = [str(record.get("appliedDate") or ""), str(record.get("replyDate") or "")] + [str(iv.get("date") or "") for iv in interviews]
+    if follow_up and follow_up >= max(prior_dates, default=""):
+        return f"follow-up sent {follow_up}"
+
     if interviews:
         latest = interviews[-1]
         label = latest.get("round") or len(interviews)
@@ -233,6 +238,8 @@ def factual_record(record: dict[str, Any], today: str) -> dict[str, Any]:
         "derivedStage": derived_stage(record),
         "appliedDate": record.get("appliedDate"),
         "replyDate": record.get("replyDate"),
+        "lastFollowUpDate": record.get("lastFollowUpDate"),
+        "lastFollowUpEvidence": record.get("lastFollowUpEvidence"),
         "rejectedDate": record.get("rejectedDate"),
         "interviews": interviews,
         "reachedInterview": reached_interview(record),

@@ -13,6 +13,7 @@ import sys
 import tempfile
 import time
 import unicodedata
+from follow_up import follow_up_fields, validate_follow_up_order
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -319,6 +320,11 @@ def make_record(
     reply_date = parse_date(fields.get("REPLY_DATE", ""), "REPLY_DATE")
     rejected_date = parse_date(fields.get("REJECTED_DATE", ""), "REJECTED_DATE")
 
+    try:
+        follow_up = follow_up_fields(fields.get("FOLLOW_UP_DATE", ""), fields.get("FOLLOW_UP_EVIDENCE", ""))
+    except ValueError as exc:
+        raise TrackerError(str(exc)) from exc
+
     priority = (fields.get("PRIORITY") or "MEDIUM").upper()
     if priority not in {"HIGH", "MEDIUM", "LOW"}:
         raise TrackerError("PRIORITY must be HIGH, MEDIUM, or LOW")
@@ -371,6 +377,7 @@ def make_record(
         "status": status_value,
         "appliedDate": applied_date,
         "replyDate": reply_date,
+        **follow_up,
         "rejectedDate": rejected_date,
         "interviewDate": interviews[0]["date"] if interviews else "",
         "interviews": interviews,
@@ -448,6 +455,10 @@ def find_existing(
 def merge_record(
     existing: dict[str, Any], incoming: dict[str, Any]
 ) -> dict[str, Any]:
+    try:
+        validate_follow_up_order(existing, incoming)
+    except ValueError as exc:
+        raise TrackerError(str(exc)) from exc
     merged = dict(existing)
     preserve_if_empty = {
         "requirements",
@@ -607,6 +618,9 @@ def main() -> int:
             "appliedDate": record["appliedDate"],
             "folderPath": record["folderPath"],
         }
+        if record.get("lastFollowUpDate"):
+            verification_fields["lastFollowUpDate"] = record["lastFollowUpDate"]
+            verification_fields["lastFollowUpEvidence"] = record["lastFollowUpEvidence"]
         if record["jobId"]:
             verification_fields["jobId"] = record["jobId"]
         for field, expected in verification_fields.items():
