@@ -40,9 +40,6 @@ jobs:
 
       - name: Run discovery
         env:
-          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
-          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
-          WHATSAPP_TO: ${{ secrets.WHATSAPP_TO }}
           # last_local_sync_line() shells out to `gh api` for the alert's
           # "Última sync local" line -- needs a token for that, same as
           # watchdog.yml's own gh api check.
@@ -75,7 +72,7 @@ jobs:
           # sync_market_history.py are: it hits LinkedIn/Workday over the
           # network (kept deliberately low-volume per the linkedin-search
           # skill's own ToS caution, see the cron comment above) and, when
-          # it finds a title-relevant posting, fires a WhatsApp review alert as a side
+          # it finds a title-relevant posting, records review candidates as a side
           # effect -- rerunning it on every retry could re-alert Francisco
           # for the same posting. So instead of resetting to a fresh
           # checkout and rerunning discovery, retry by rebasing this run's

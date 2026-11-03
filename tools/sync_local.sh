@@ -108,16 +108,6 @@ for attempt in 1 2 3; do
 done
 
 echo "All push attempts failed after 3 tries -- giving up this cycle, will retry on the next hourly run."
-# Best-effort immediate alert for THIS failure class (the script ran, but
-# git push exhausted its retries) -- a different, narrower thing than the
-# fully-silent "bash itself never started" failure mode (2026-08-05's TCC/
-# Full Disk Access block), which can't reach this point at all since the
-# script never runs; that class is instead caught from the cloud side by
-# .github/workflows/sync-watchdog.yml checking for a stale heartbeat.
-# `gh` already carries the 'workflow' scope locally (same auth used for git
-# push), so this reuses the existing whatsapp.yml path rather than needing
-# separate WhatsApp credentials stored on this machine.
-gh workflow run whatsapp.yml --repo FranciscoKirhman/job-tracker \
-  -f raw_message="⚠ Sync local (Mac) falló tras 3 intentos de push. Ver state/sync_local.log." \
-  || echo "Could not send failure alert via gh (gh workflow run itself failed)."
+# WhatsApp notifications retired by user request on 2026-11-03.
+# Keep the failure visible in local logs without attempting an outbound alert.
 exit 1

@@ -25,7 +25,6 @@ on:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   check:
@@ -42,10 +41,6 @@ jobs:
           echo "Found $count local-sync commit(s) (heartbeat or real) in the last 24h."
           echo "ran=$([ "$count" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - name: Flag the miss over WhatsApp
+      - name: Record missing sync in workflow summary
         if: steps.check.outputs.ran == 'false'
-        run: |
-          echo "No local-sync commit in the last 24h -- flagging, not retrying (nothing to retry: this runs on Francisco's own Mac, not in CI)."
-          gh workflow run whatsapp.yml -f raw_message="⚠ El sync local (Mac) no ha corrido en 24h+. Revisa que el LaunchAgent esté activo (launchctl list | grep jobtracker) y state/sync_local.launchd.log por errores de permisos."
-        env:
-          GH_TOKEN: ${{ github.token }}
+        run: echo "No local-sync commit in the last 24 hours. WhatsApp notifications are disabled." >> "$GITHUB_STEP_SUMMARY"

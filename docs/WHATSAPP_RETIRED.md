@@ -1,0 +1,3 @@
+# WhatsApp notifications retired
+
+Disabled at the user's request on 2026-11-03. The WhatsApp tracker workflow and digest retry workflow are disabled remotely and contain no scheduled or repository dispatch triggers. Discovery, local sync checks, and the OpenAI watcher no longer send or dispatch WhatsApp notifications. The compatibility sender makes no network requests and reads no credentials. Local sync failure details remain in local logs; missing-sync details remain in the GitHub run summary. Discovery and tracker synchronization remain enabled. No alert has been marked delivered as part of this retirement.

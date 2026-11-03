@@ -15,7 +15,7 @@ Sources:
     configured for Abbott (site ID confirmed by hand); add more companies to
     WORKDAY_SOURCES as their tenant/site IDs are discovered.
 
-Title-relevant finds get an immediate WhatsApp review alert and are marked
+Title-relevant finds are logged locally for review and marked
 "seen" in state/market_history_seen.json so the next scheduled digest does not
 repeat them. Every find remains discovery evidence in MARKET_HISTORY. Discovery
 never creates an application record or presents title overlap as a Jobs3 fit
@@ -37,7 +37,6 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from send_whatsapp import main as send_whatsapp_main  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TRACKER_PATH = REPO_ROOT / "francisco-job-tracker-2026.html"
@@ -515,8 +514,7 @@ def main() -> int:
         if sync_line:
             lines.append("")
             lines.append(sync_line)
-        sys.argv = ["send_whatsapp.py", "\n".join(lines)]
-        send_whatsapp_main()
+        print("\n".join(lines))
 
     return 0
 
